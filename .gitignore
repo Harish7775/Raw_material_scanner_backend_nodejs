@@ -3,7 +3,6 @@ node_modules/
 .netlify
 package-lock.json
 .env
-sequelize.config.json
 # Logs
 logs
 *.log
