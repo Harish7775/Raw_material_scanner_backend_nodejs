@@ -25,8 +25,8 @@ exports.createUser = async (req, res) => {
       Phone: req.body.Phone,
       Password: hashedPassword,
       RoleId: role.RoleId,
-      CreatedBy: req.user.id,
-      ModifiedBy: req.user.id,
+      // CreatedBy: req.user.id,
+      // ModifiedBy: req.user.id,
     };
 
     const data = await Users.create(user);
