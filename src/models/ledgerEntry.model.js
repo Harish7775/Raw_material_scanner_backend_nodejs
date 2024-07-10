@@ -15,7 +15,7 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.DECIMAL,
         allowNull: false,
       },
-      UserId: {
+      RatailerUserId: {
         type: Sequelize.INTEGER,
       },
       CreatedBy: {
@@ -36,10 +36,10 @@ module.exports = (sequelize, Sequelize) => {
 
   LedgerEntry.associate = function (models) {
     LedgerEntry.belongsTo(models.Users, {      
-      foreignKey: "UserId",
+      foreignKey: "RatailerUserId",
       targetKey: "UserId",
       constraints: true,
-      as: 'User',
+      as: 'UserDetail',
     });
     LedgerEntry.belongsTo(models.Users, {
       foreignKey: "CreatedBy",

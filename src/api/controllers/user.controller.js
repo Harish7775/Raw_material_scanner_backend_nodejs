@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const db = require("../../models");
 const Users = db.Users;
 const Coupon = db.Coupon;
-const Ledger = db.Ledger;
+const LedgerEntry = db.LedgerEntry;
 const Role = db.Roles;
 const Token = db.Token;
 const { Op } = require("sequelize");
@@ -29,19 +29,8 @@ exports.createUser = async (req, res) => {
       ModifiedBy: req.user.id,
     };
 
-    const createdUser = await Users.create(user);
-
-    const responseUser = {
-      FirstName: createdUser.FirstName,
-      LastName: createdUser.LastName,
-      Email: createdUser.Email,
-      Phone: createdUser.Phone,
-      RoleId: createdUser.RoleId,
-      CreatedAt: createdUser.createdAt,
-      UpdatedAt: createdUser.updatedAt,
-    };
-
-    return res.status(200).send({ success: true, data: responseUser });
+    const data = await Users.create(user);
+    return res.status(200).send({ success: true, data });
   } catch (err) {
     return res.status(500).send({
       success: false,
@@ -78,18 +67,7 @@ exports.adminLogin = async (req, res) => {
       { expiresIn: "3d" }
     );
 
-    const adminData = {
-      UserId: admin.UserId,
-      FirstName: admin.FirstName,
-      LastName: admin.LastName,
-      Email: admin.Email,
-      Phone: admin.Phone,
-      RoleId: admin.RoleId,
-      CreatedAt: admin.createdAt,
-      UpdatedAt: admin.updatedAt,
-    };
-
-    return res.status(200).json({ success: true, user: adminData, token });
+    return res.status(200).json({ success: true, admin, token });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
@@ -265,7 +243,7 @@ exports.forgetPassword = async (req, res) => {
       await token.save();
     }
 
-    const link = `${process.env.BASE_URL}/forgetPassword/${user.UserId}/${token.Token}`;
+    const link = `${process.env.BASE_URL}/resetPassword/${user.UserId}/${token.Token}`;
 
     await sendMail(user.Email, "Password reset", link);
 
@@ -324,10 +302,10 @@ exports.getRetailerDetailById = async (req, res) => {
   try {
     const id = req.params.id;
 
-    const ledgerEntries = await Ledger.findAll({
-      where: { UserId: id },
+    const ledgerEntries = await LedgerEntry.findAll({
+      where: { RetailerUserId: id },
       include: [
-        { model: Users, as: "User", attributes: ["FirstName", "LastName"] },
+        { model: Users, as: "UserDetail", attributes: ["FirstName", "LastName"] },
       ],
     });
 
@@ -402,6 +380,93 @@ exports.getDashboardStats = async (req, res) => {
 
     return res.status(200).json(response);
   } catch (error) {
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { Phone, oldPassword, newPassword } = req.body;
+
+    if (!Phone || !oldPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
+    }
+
+    const user = await Users.findOne({ where: { Phone } });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found..!" });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.Password);
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Old password is incorrect" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.Password = hashedPassword;
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+exports.getRetailerStats = async (req, res) => {
+  try {
+    const retailerId = req.params.id;
+    const startDate = moment().startOf("month").toDate();
+    const endDate = moment().endOf("month").toDate();
+
+    const ledgerQuery = {
+      where: {
+        RetailerUserId: retailerId,
+        createdAt: {
+          [Op.between]: [startDate, endDate],
+        },
+      },
+    };
+
+    const [billedAmount, paidAmount, totalAmount, scannedQRCount] = await Promise.all([
+      LedgerEntry.sum("Amount", { ...ledgerQuery, where: { ...ledgerQuery.where, EntryType: "Debit" } }),
+      LedgerEntry.sum("Amount", { ...ledgerQuery, where: { ...ledgerQuery.where, EntryType: "Credit" } }),
+      LedgerEntry.sum("Amount", ledgerQuery),
+      Coupon.count({
+        where: {
+          RedeemDateTime: {
+            [Op.between]: [startDate, endDate],
+          },
+          RedeemBy: retailerId,
+        },
+      }),
+    ]);
+
+    const outstandingAmount = (billedAmount || 0) - (paidAmount || 0);
+
+    const response = {
+      success: true,
+      data: {
+        billedAmount: billedAmount || 0,
+        outstandingAmount: outstandingAmount || 0,
+        totalAmount: totalAmount || 0,
+        scannedQRCount: scannedQRCount || 0,
+      },
+    };
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error(error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };

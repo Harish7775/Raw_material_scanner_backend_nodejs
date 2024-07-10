@@ -70,9 +70,13 @@ module.exports = (sequelize, Sequelize) => {
       as: "ScannedCoupons",
       constraints: true,
     });
+    Users.hasMany(models.LedgerEntry, {
+      foreignKey: "RetailerUserId",
+      as: "LedgerEntries",
+      constraints: true,
+    });
   };
 
   return Users;
 
-  
 };

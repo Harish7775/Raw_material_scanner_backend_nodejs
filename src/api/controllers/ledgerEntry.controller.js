@@ -1,5 +1,5 @@
 const db = require("../../models");
-const Ledger = db.Ledger;
+const LedgerEntry = db.LedgerEntry;
 const Users = db.Users;
 const { Op } = require("sequelize");
 
@@ -7,7 +7,7 @@ exports.createLedgerEntry = async (req, res) => {
   try {
     //req.body.CreatedBy = req.user.id;
     //req.body.ModifiedBy = req.user.id;
-    const ledgerEntry = await Ledger.create(req.body);
+    const ledgerEntry = await LedgerEntry.create(req.body);
     return res
       .status(201)
       .json({ success: true, message: "Ledger Entry Successfully..!" });
@@ -23,35 +23,38 @@ exports.getAllLedgerEntries = async (req, res) => {
       pageSize = 10,
       sortBy = "LedgerId",
       sortOrder = "DESC",
-      userIds = [],
+      userIds,
     } = req.query;
 
     const offset = (page - 1) * pageSize;
     const limit = parseInt(pageSize);
 
+    const userIdsArray = userIds ? userIds.split(",").map(id => parseInt(id)) : [];
+
     const whereCondition = {
-      ...(userIds.length > 0 && {
-        UserId: {
-          [Op.in]: userIds,
+      ...(userIdsArray.length > 0 && {
+        RetailerUserId: {
+          [Op.in]: userIdsArray,
         },
       }),
     };
 
-    const ledgerEntries = await Ledger.findAndCountAll({
+    const ledgerEntries = await LedgerEntry.findAndCountAll({
       where: whereCondition,
       include: [
-        { model: Users, as: "User", attributes: ["FirstName", "LastName"] },
+        { model: Users, as: "UserDetail", attributes: ["FirstName", "LastName"] },
       ],
       order: [[sortBy, sortOrder.toUpperCase()]],
       offset,
       limit,
     });
-    const result = await Ledger.findOne({
-      where: { UserId: 1 },
-      include: [
-        { model: Users, as: "User", attributes: ["FirstName", "LastName"] },
-      ],
-    });
+
+    // const result = await Ledger.findOne({
+    //   where: { UserId: 1 },
+    //   include: [
+    //     { model: Users, attributes: ["FirstName", "LastName"] },
+    //   ],
+    // });
 
     return res.status(200).json({
       success: true,
@@ -61,6 +64,7 @@ exports.getAllLedgerEntries = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
+    console.log(error)
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -68,7 +72,7 @@ exports.getAllLedgerEntries = async (req, res) => {
 exports.getLedgerEntryById = async (req, res) => {
   try {
     const id = req.params.id;
-    const ledgerEntry = await Ledger.findOne({ where: { LedgerId: id } });
+    const ledgerEntry = await LedgerEntry.findOne({ where: { LedgerId: id } });
 
     if (!ledgerEntry) {
       return res
@@ -87,7 +91,7 @@ exports.updateLedgerEntry = async (req, res) => {
     const id = req.params.id;
     const { EntryType, Amount } = req.body;
 
-    const [updated] = await Ledger.update(
+    const [updated] = await LedgerEntry.update(
       { EntryType, Amount },
       {
         where: { LedgerId: id },
@@ -100,7 +104,7 @@ exports.updateLedgerEntry = async (req, res) => {
         .json({ success: false, message: "Ledger entry not found" });
     }
     //req.body.ModifiedBy = req.user.id;
-    const updatedLedgerEntry = await Ledger.findByPk(id);
+    const updatedLedgerEntry = await LedgerEntry.findByPk(id);
     return res.status(200).json({ success: true, updatedLedgerEntry });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
@@ -111,7 +115,7 @@ exports.deleteLedgerEntry = async (req, res) => {
   try {
     const id = req.params.id;
 
-    const deleted = await Ledger.destroy({
+    const deleted = await LedgerEntry.destroy({
       where: { LedgerId: id },
     });
 
@@ -132,7 +136,7 @@ exports.deleteLedgerEntry = async (req, res) => {
 exports.getLedgerEntryByUserId = async (req, res) => {
   try {
     const id = req.params.id;
-    const ledgerEntryByUser = await Ledger.findAll({ where: { UserId: id } });
+    const ledgerEntryByUser = await LedgerEntry.findAll({ where: { RetailerUserId: id } });
 
     if (!ledgerEntryByUser) {
       return res

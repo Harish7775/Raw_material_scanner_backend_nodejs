@@ -11,6 +11,7 @@ const router = express.Router();
 router.post('/addUser', validateRole(["Admin", "Retailer"]), validate(createUserSchema, "body"), userController.createUser);
 router.post('/adminLogin',validate(loginSchema, "body"), userController.adminLogin);
 router.post('/forgetPassword', userController.forgetPassword);
+router.post('/changePassword', userController.changePassword);
 router.post('/resetPassword/:UserId/:Token', userController.resetPassword);
 router.get('/getAllUsers', validateRole(["Admin", "Retailer"]), validate(getRecordsSchema, 'query'), userController.getAllUsers);
 router.get('/getUserById/:id', validate(idSchema, 'params'), userController.getUserById);
@@ -18,6 +19,7 @@ router.put('/updateUser/:id', validateRole(["Admin", "Retailer"]), validate(upda
 router.delete('/deleteUser/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), userController.deleteUser);
 router.get('/getRetailerDetailById/:id', validate(idSchema, 'params'), userController.getRetailerDetailById);
 router.get('/getDashboardStats', userController.getDashboardStats);
+router.get('/getRetailerStats/:id', validate(idSchema, 'params'), userController.getRetailerStats);
 
 
 module.exports = router;

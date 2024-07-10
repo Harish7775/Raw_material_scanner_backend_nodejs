@@ -27,7 +27,7 @@ db.Roles = require("./role.model.js")(sequelize, Sequelize);
 db.Category = require("./category.model.js")(sequelize, Sequelize);
 db.Company = require("./company.model.js")(sequelize, Sequelize);
 db.Product = require("./product.model.js")(sequelize, Sequelize);
-db.Ledger = require("./ledgerEntry.model.js")(sequelize, Sequelize);
+db.LedgerEntry = require("./ledgerEntry.model.js")(sequelize, Sequelize);
 db.Coupon = require("./coupon.model.js")(sequelize, Sequelize);
 db.Token = require("./token.model.js")(sequelize, Sequelize);
 
