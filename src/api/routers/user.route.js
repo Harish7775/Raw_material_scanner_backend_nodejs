@@ -8,7 +8,7 @@ const { getRecordsSchema, idSchema } = require('../validators/common.validator')
 const router = express.Router();
 
 
-router.post('/addUser', userController.createUser);
+router.post('/addUser', validateRole(["Admin", "Retailer"]), validate(createUserSchema, "body"), userController.createUser);
 router.post('/adminLogin',validate(loginSchema, "body"), userController.adminLogin);
 router.post('/forgetPassword', userController.forgetPassword);
 router.post('/resetPassword/:UserId/:Token', userController.resetPassword);

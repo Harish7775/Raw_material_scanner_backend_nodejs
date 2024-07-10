@@ -25,12 +25,23 @@ exports.createUser = async (req, res) => {
       Phone: req.body.Phone,
       Password: hashedPassword,
       RoleId: role.RoleId,
-      // CreatedBy: req.user.id,
-      // ModifiedBy: req.user.id,
+      CreatedBy: req.user.id,
+      ModifiedBy: req.user.id,
     };
 
-    const data = await Users.create(user);
-    return res.status(200).send({ success: true, data });
+    const createdUser = await Users.create(user);
+
+    const responseUser = {
+      FirstName: createdUser.FirstName,
+      LastName: createdUser.LastName,
+      Email: createdUser.Email,
+      Phone: createdUser.Phone,
+      RoleId: createdUser.RoleId,
+      CreatedAt: createdUser.createdAt,
+      UpdatedAt: createdUser.updatedAt,
+    };
+
+    return res.status(200).send({ success: true, data: responseUser });
   } catch (err) {
     return res.status(500).send({
       success: false,
@@ -67,7 +78,18 @@ exports.adminLogin = async (req, res) => {
       { expiresIn: "3d" }
     );
 
-    return res.status(200).json({ success: true, admin, token });
+    const adminData = {
+      UserId: admin.UserId,
+      FirstName: admin.FirstName,
+      LastName: admin.LastName,
+      Email: admin.Email,
+      Phone: admin.Phone,
+      RoleId: admin.RoleId,
+      CreatedAt: admin.createdAt,
+      UpdatedAt: admin.updatedAt,
+    };
+
+    return res.status(200).json({ success: true, user: adminData, token });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
