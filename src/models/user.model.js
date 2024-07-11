@@ -53,7 +53,7 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey: "RoleId",
       targetKey: "RoleId",
       constraints: true,
-      as: "Role"
+      as: "Role",
     });
     Users.belongsTo(models.Users, {
       foreignKey: "CreatedBy",
@@ -70,13 +70,7 @@ module.exports = (sequelize, Sequelize) => {
       as: "ScannedCoupons",
       constraints: true,
     });
-    Users.hasMany(models.LedgerEntry, {
-      foreignKey: "RetailerUserId",
-      as: "LedgerEntries",
-      constraints: true,
-    });
   };
 
   return Users;
-
 };

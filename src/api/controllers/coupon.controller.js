@@ -20,7 +20,9 @@ exports.createCoupon = async (req, res) => {
       req.body.CouponCode = CouponCode;
       const newCoupon = await Coupon.create(req.body);
     }
-    return res.status(201).json({ success: true, message: "Coupon Generated Successfully..!" });
+    return res
+      .status(201)
+      .json({ success: true, message: "Coupon Generated Successfully..!" });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
@@ -156,7 +158,9 @@ exports.getCouponById = async (req, res) => {
     });
 
     if (!coupon) {
-      return res.status(404).json({ success: false, message: "Coupon not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Coupon not found" });
     }
 
     return res.status(200).json({ success: true, coupon });
@@ -175,16 +179,22 @@ exports.updateCoupon = async (req, res) => {
     });
 
     if (!coupon) {
-      return res.status(404).json({ success: false, message: "Coupon not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Coupon not found" });
     }
 
     if (coupon.RedeemBy !== null) {
-      return res.status(400).json({ success: false, message: "Coupon has already been redeemed" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Coupon has already been redeemed" });
     }
 
     const currentDateTime = new Date();
     if (coupon.ExpiryDateTime < currentDateTime) {
-      return res.status(400).json({ success: false, message: "Coupon has expired" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Coupon has expired" });
     }
 
     const [updated] = await Coupon.update(updateData, {
@@ -192,16 +202,18 @@ exports.updateCoupon = async (req, res) => {
     });
 
     if (!updated) {
-      return res.status(404).json({ success: false, message: "Coupon not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Coupon not found" });
     }
 
-    return res.status(200).json({ success: true, message: "Coupon updated successfully!" });
-
+    return res
+      .status(200)
+      .json({ success: true, message: "Coupon updated successfully!" });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
-
 
 exports.deleteCoupon = async (req, res) => {
   try {
@@ -209,11 +221,15 @@ exports.deleteCoupon = async (req, res) => {
     const coupon = await Coupon.findByPk(id);
 
     if (!coupon) {
-      return res.status(404).json({ success: false, message: "Coupon not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Coupon not found" });
     }
 
     await coupon.destroy();
-    return res.status(200).json({ success: true, message: "Coupon deleted successfully" });
+    return res
+      .status(200)
+      .json({ success: true, message: "Coupon deleted successfully" });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
@@ -243,27 +259,29 @@ exports.getCouponByRole = async (req, res) => {
     const role = await Role.findOne({ where: { Name: name } });
 
     if (!role) {
-      return res.status(404).json({ success: false, message: "Role not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Role not found" });
     }
 
     const roleId = role.RoleId;
 
     const users = await User.findAll({
       where: { RoleId: roleId },
-      attributes: ['UserId'],
+      attributes: ["UserId"],
     });
 
-    const userIds = users.map(user => user.UserId);
+    const userIds = users.map((user) => user.UserId);
 
     let whereCondition = {};
 
-    if (role.Name === 'Retailer') {
+    if (role.Name === "Retailer") {
       whereCondition = {
         RedeemBy: {
           [Op.in]: userIds,
         },
       };
-    }else if(role.Name === 'Mason'){
+    } else if (role.Name === "Mason") {
       whereCondition = {
         RedeemTo: {
           [Op.in]: userIds,
@@ -272,11 +290,10 @@ exports.getCouponByRole = async (req, res) => {
     }
 
     const coupons = await Coupon.findAll({
-      where: whereCondition
+      where: whereCondition,
     });
 
     return res.status(200).json({ success: true, coupons });
-
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
@@ -288,24 +305,28 @@ exports.getQrCodeHistory = async (req, res) => {
 
     const coupons = await Coupon.findAll({
       where: { RedeemBy: id },
-      attributes: ['Amount', 'RedeemDateTime', 'RedeemTo'], 
-      include: [{
-        model: User,
-        as: 'RedeemToUser',
-        attributes: ['FirstName']
-      }]
+      attributes: ["Amount", "RedeemDateTime", "RedeemTo"],
+      include: [
+        {
+          model: User,
+          as: "RedeemToUser",
+          attributes: ["FirstName"],
+        },
+      ],
     });
 
     if (coupons.length === 0) {
-      return res.status(404).json({ success: false, message: "No coupons found for this user." });
+      return res
+        .status(404)
+        .json({ success: false, message: "No coupons found for this user." });
     }
 
-    const response = coupons.map(coupon => ({
+    const response = coupons.map((coupon) => ({
       Amount: coupon.Amount,
       RedeemDateTime: coupon.RedeemDateTime,
       Mason_Name: {
-        name: coupon.RedeemToUser.FirstName
-      }
+        name: coupon.RedeemToUser.FirstName,
+      },
     }));
 
     return res.status(200).json({ success: true, response });

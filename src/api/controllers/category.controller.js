@@ -10,10 +10,13 @@ exports.createCategory = async (req, res) => {
     const data = await Category.create(req.body);
     return res.status(201).send({ success: true, data });
   } catch (err) {
-    return res.status(500).send({ success: false, 
-      message:
-        err.message || "Some error occurred while creating the Category.",
-    });
+    return res
+      .status(500)
+      .send({
+        success: false,
+        message:
+          err.message || "Some error occurred while creating the Category.",
+      });
   }
 };
 
@@ -54,14 +57,14 @@ exports.getAllCategories = async (req, res) => {
     });
 
     return res.status(200).json({
-      success: true, 
+      success: true,
       categories: categories.rows,
       totalItems: categories.count,
       totalPages: Math.ceil(categories.count / limit),
       currentPage: parseInt(page),
     });
   } catch (error) {
-   return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
@@ -72,7 +75,9 @@ exports.getCategoryById = async (req, res) => {
       where: { CategoryId: categoryId },
     });
     if (!category) {
-      return res.status(404).json({ success: false, message: "Category not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
     }
     return res.status(200).json({ success: true, category });
   } catch (error) {
@@ -111,9 +116,13 @@ exports.deleteCategory = async (req, res) => {
 
     if (result) {
       const product = await Product.destroy({ where: { CategoryId: id } });
-      return res.status(200).json({ success: true, message: "Category deleted successfully" });
+      return res
+        .status(200)
+        .json({ success: true, message: "Category deleted successfully" });
     } else {
-      return res.status(404).json({ success: false, message: "Category not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
     }
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });

@@ -13,10 +13,13 @@ exports.createProduct = async (req, res) => {
 
     return res.status(201).json({ success: true, product });
   } catch (error) {
-    res.status(500).json({ success: false, 
-      message:
-        error.message || "Some error occurred while creating the Product.",
-    });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message:
+          error.message || "Some error occurred while creating the Product.",
+      });
   }
 };
 
@@ -37,7 +40,7 @@ exports.getAllProducts = async (req, res) => {
     if (pagination === "false") {
       const data = await Product.findAll({
         where: {
-          IsActive: true
+          IsActive: true,
         },
         include: [
           { model: Category, attributes: ["Name"] },
@@ -110,7 +113,9 @@ exports.getProductById = async (req, res) => {
       ],
     });
     if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
     }
     return res.status(200).json({ success: true, product });
   } catch (error) {
@@ -146,9 +151,13 @@ exports.deleteProduct = async (req, res) => {
 
     if (result) {
       const coupon = await Coupon.destroy({ where: { ProductId: id } });
-      return res.status(200).json({ success: true, message: "Product deleted successfully" });
+      return res
+        .status(200)
+        .json({ success: true, message: "Product deleted successfully" });
     } else {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
     }
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });

@@ -29,7 +29,9 @@ exports.getAllLedgerEntries = async (req, res) => {
     const offset = (page - 1) * pageSize;
     const limit = parseInt(pageSize);
 
-    const userIdsArray = userIds ? userIds.split(",").map(id => parseInt(id)) : [];
+    const userIdsArray = userIds
+      ? userIds.split(",").map((id) => parseInt(id))
+      : [];
 
     const whereCondition = {
       ...(userIdsArray.length > 0 && {
@@ -42,7 +44,11 @@ exports.getAllLedgerEntries = async (req, res) => {
     const ledgerEntries = await LedgerEntry.findAndCountAll({
       where: whereCondition,
       include: [
-        { model: Users, as: "UserDetail", attributes: ["FirstName", "LastName"] },
+        {
+          model: Users,
+          as: "UserDetail",
+          attributes: ["FirstName", "LastName"],
+        },
       ],
       order: [[sortBy, sortOrder.toUpperCase()]],
       offset,
@@ -64,7 +70,7 @@ exports.getAllLedgerEntries = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -136,7 +142,9 @@ exports.deleteLedgerEntry = async (req, res) => {
 exports.getLedgerEntryByUserId = async (req, res) => {
   try {
     const id = req.params.id;
-    const ledgerEntryByUser = await LedgerEntry.findAll({ where: { RetailerUserId: id } });
+    const ledgerEntryByUser = await LedgerEntry.findAll({
+      where: { RetailerUserId: id },
+    });
 
     if (!ledgerEntryByUser) {
       return res

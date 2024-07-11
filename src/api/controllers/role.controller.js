@@ -1,4 +1,4 @@
-const db = require('../../models')
+const db = require("../../models");
 const Roles = db.Roles;
 
 exports.createRole = async (req, res) => {
@@ -7,7 +7,9 @@ exports.createRole = async (req, res) => {
 
     const existingRole = await Roles.findOne({ where: { Name: name } });
     if (existingRole) {
-      return res.status(400).json({ success: false, message: 'Role name already exists' });
+      return res
+        .status(400)
+        .json({ success: false, message: "Role name already exists" });
     }
 
     const newRole = await Roles.create({
@@ -16,13 +18,13 @@ exports.createRole = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Role created successfully',
+      message: "Role created successfully",
       role: newRole,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Error creating role',
+      message: "Error creating role",
       error: error.message,
     });
   }
@@ -35,12 +37,16 @@ exports.deleteRole = async (req, res) => {
     const role = await Roles.findByPk(id);
 
     if (!role) {
-      return res.status(404).json({ success: false, message: "Role not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Role not found" });
     }
 
     await role.destroy();
 
-    return res.status(200).json({ success: true, message: "Role deleted successfully" });
+    return res
+      .status(200)
+      .json({ success: true, message: "Role deleted successfully" });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }

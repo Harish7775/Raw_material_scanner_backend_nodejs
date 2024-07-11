@@ -10,9 +10,13 @@ exports.createCompany = async (req, res) => {
     const data = await Company.create(req.body);
     return res.status(200).send({ success: true, data });
   } catch (err) {
-    return res.status(500).send({ success: false,
-      message: err.message || "Some error occurred while creating the Company.",
-    });
+    return res
+      .status(500)
+      .send({
+        success: false,
+        message:
+          err.message || "Some error occurred while creating the Company.",
+      });
   }
 };
 
@@ -70,7 +74,9 @@ exports.getCompanyById = async (req, res) => {
       where: { CompanyId: id },
     });
     if (!company) {
-      return res.status(404).json({ success: false, message: "Company not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Company not found" });
     }
     return res.status(200).json({ success: true, company });
   } catch (error) {
@@ -107,9 +113,13 @@ exports.deleteCompany = async (req, res) => {
 
     if (result) {
       const product = await Product.destroy({ where: { CompanyId: id } });
-      return res.status(200).json({ success: true, message: "Company deleted successfully" });
+      return res
+        .status(200)
+        .json({ success: true, message: "Company deleted successfully" });
     } else {
-      return res.status(404).json({ success: false, message: "Company not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Company not found" });
     }
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });

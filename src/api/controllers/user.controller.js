@@ -305,7 +305,11 @@ exports.getRetailerDetailById = async (req, res) => {
     const ledgerEntries = await LedgerEntry.findAll({
       where: { RetailerUserId: id },
       include: [
-        { model: Users, as: "UserDetail", attributes: ["FirstName", "LastName"] },
+        {
+          model: Users,
+          as: "UserDetail",
+          attributes: ["FirstName", "LastName"],
+        },
       ],
     });
 
@@ -438,19 +442,26 @@ exports.getRetailerStats = async (req, res) => {
       },
     };
 
-    const [billedAmount, paidAmount, totalAmount, scannedQRCount] = await Promise.all([
-      LedgerEntry.sum("Amount", { ...ledgerQuery, where: { ...ledgerQuery.where, EntryType: "Debit" } }),
-      LedgerEntry.sum("Amount", { ...ledgerQuery, where: { ...ledgerQuery.where, EntryType: "Credit" } }),
-      LedgerEntry.sum("Amount", ledgerQuery),
-      Coupon.count({
-        where: {
-          RedeemDateTime: {
-            [Op.between]: [startDate, endDate],
+    const [billedAmount, paidAmount, totalAmount, scannedQRCount] =
+      await Promise.all([
+        LedgerEntry.sum("Amount", {
+          ...ledgerQuery,
+          where: { ...ledgerQuery.where, EntryType: "Debit" },
+        }),
+        LedgerEntry.sum("Amount", {
+          ...ledgerQuery,
+          where: { ...ledgerQuery.where, EntryType: "Credit" },
+        }),
+        LedgerEntry.sum("Amount", ledgerQuery),
+        Coupon.count({
+          where: {
+            RedeemDateTime: {
+              [Op.between]: [startDate, endDate],
+            },
+            RedeemBy: retailerId,
           },
-          RedeemBy: retailerId,
-        },
-      }),
-    ]);
+        }),
+      ]);
 
     const outstandingAmount = (billedAmount || 0) - (paidAmount || 0);
 
