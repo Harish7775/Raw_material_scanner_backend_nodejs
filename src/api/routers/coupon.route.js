@@ -8,7 +8,7 @@ const router = express.Router()
 
 router.post('/addCoupon', validateRole(["Admin"]), validate(createCouponSchema, 'body'), couponController.createCoupon);
 router.post('/getCoupons', validateRole(["Admin"]), couponController.getAllCoupons);
-router.get('/getCouponById/:id', validateRole(["Admin"]), validate(idSchema, 'params'), couponController.getCouponById);
+router.get('/getCouponById/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), couponController.getCouponById);
 router.put('/updateCoupon/:id', validateRole(["Admin", "Retailer"]), validate(updateCouponSchema, 'body'), couponController.updateCoupon);
 router.delete('/deleteCoupon/:id', validateRole(["Admin"]), validate(idSchema, 'params'), couponController.deleteCoupon);
 router.get('/getRedeemCoupons/:id', validate(idSchema, 'params'), couponController.getCoupons);
