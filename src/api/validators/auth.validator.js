@@ -4,7 +4,7 @@ const loginSchema = Joi.object().keys({
   Phone: Joi.string()
     .required()
     .error(new Error("Mobile number is required and should be 10 digits")),
-  Password: Joi.string().required().error(new Error("Password is required")),
+  Password: Joi.string(),
 });
 const passwordSchema = Joi.object().keys({
   OldPassword: Joi.string()

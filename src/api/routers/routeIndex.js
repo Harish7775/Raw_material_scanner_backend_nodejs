@@ -1,6 +1,5 @@
 const express = require("express");
 
-const authRoutes = require("./auth.route");
 const categoryRoute = require("./category.route");
 const userRoute = require("./user.route");
 const companyRoute = require("./company.route");
@@ -11,7 +10,6 @@ const ledgerRoute = require('./ledgerEntry.route');
 
 const allRouters = express.Router();
 
-allRouters.use("/auth", authRoutes);
 allRouters.use("/category", categoryRoute);
 allRouters.use("/user", userRoute);
 allRouters.use("/company", companyRoute);

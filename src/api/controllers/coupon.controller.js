@@ -2,6 +2,8 @@ const db = require("../../models");
 const Coupon = db.Coupon;
 const Product = db.Product;
 const Role = db.Roles;
+const Category = db.Category;
+const Company = db.Company;
 const User = db.Users;
 const { Op } = require("sequelize");
 
@@ -119,6 +121,18 @@ exports.getAllCoupons = async (req, res) => {
         {
           model: Product,
           attributes: ["Name"],
+          include: [
+            {
+              model: Category,
+              //as: 'category',
+              attributes: [ 'Name'], // Specify the attributes you need from Category
+            },
+            {
+              model: Company,
+              //as: 'company',
+              attributes: ['Name'], // Specify the attributes you need from Company
+            }
+          ],
         },
         {
           model: User,
@@ -310,7 +324,7 @@ exports.getQrCodeHistory = async (req, res) => {
         {
           model: User,
           as: "RedeemToUser",
-          attributes: ["FirstName"],
+          attributes: ["FirstName", "LastName"],
         },
       ],
     });
@@ -326,6 +340,7 @@ exports.getQrCodeHistory = async (req, res) => {
       RedeemDateTime: coupon.RedeemDateTime,
       Mason_Name: {
         name: coupon.RedeemToUser.FirstName,
+        lastname: coupon.RedeemToUser.LastName,
       },
     }));
 

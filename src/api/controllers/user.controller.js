@@ -25,8 +25,8 @@ exports.createUser = async (req, res) => {
       Phone: req.body.Phone,
       Password: hashedPassword,
       RoleId: role.RoleId,
-      CreatedBy: req.user.id,
-      ModifiedBy: req.user.id,
+      CreatedBy: req?.user?.id,
+      ModifiedBy: req?.user?.id,
     };
 
     const data = await Users.create(user);
@@ -53,12 +53,14 @@ exports.adminLogin = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    const isPasswordValid = await bcrypt.compare(Password, admin.Password);
+    if (role.Name == "Admin") {
+      const isPasswordValid = await bcrypt.compare(Password, admin.Password);
 
-    if (!isPasswordValid) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid password" });
+      if (!isPasswordValid) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid password" });
+      }
     }
 
     const token = jwt.sign(
@@ -343,11 +345,18 @@ exports.getDashboardStats = async (req, res) => {
     const startDate = moment().startOf("month").toDate();
     const endDate = moment().endOf("month").toDate();
 
-    const role = await Role.findOne({ where: { Name: "Retailer" } });
+    const retailerRole = await Role.findOne({ where: { Name: "Retailer" } });
+    const masonRole = await Role.findOne({ where: { Name: "Mason" } });
 
     const retailerCount = await Users.count({
       where: {
-        RoleId: role.RoleId,
+        RoleId: retailerRole.RoleId,
+      },
+    });
+
+    const masonCount = await Users.count({
+      where: {
+        RoleId: masonRole.RoleId,
       },
     });
 
@@ -377,6 +386,7 @@ exports.getDashboardStats = async (req, res) => {
       success: true,
       data: {
         retailerCount,
+        masonCount,
         scannedCouponsCount,
         scannedCouponsAmount: scannedCouponsAmount || 0,
       },
@@ -384,6 +394,7 @@ exports.getDashboardStats = async (req, res) => {
 
     return res.status(200).json(response);
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };

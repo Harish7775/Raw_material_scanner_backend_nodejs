@@ -17,9 +17,9 @@ router.get('/getAllUsers', validateRole(["Admin", "Retailer"]), validate(getReco
 router.get('/getUserById/:id', validate(idSchema, 'params'), userController.getUserById);
 router.put('/updateUser/:id', validateRole(["Admin", "Retailer"]), validate(updateUserSchema, 'body'), userController.updateUser);
 router.delete('/deleteUser/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), userController.deleteUser);
-router.get('/getRetailerDetailById/:id', validate(idSchema, 'params'), userController.getRetailerDetailById);
-router.get('/getDashboardStats', userController.getDashboardStats);
-router.get('/getRetailerStats/:id', validate(idSchema, 'params'), userController.getRetailerStats);
+router.get('/getRetailerDetailById/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), userController.getRetailerDetailById);
+router.get('/getDashboardStats', validateRole(["Admin", "Retailer"]), userController.getDashboardStats);
+router.get('/getRetailerStats/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), userController.getRetailerStats);
 
 
 module.exports = router;

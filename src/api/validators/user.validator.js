@@ -12,7 +12,7 @@ const createUserSchema = Joi.object().keys({
     .error(new Error("Phone Number is required")),
   Password: Joi.string().required(),
   IsActive: Joi.boolean().default(true).optional(),
-  Role: Joi.string().valid("Retailer", "Mason").required().error(new Error("Role is required")),
+  Role: Joi.string().valid("Retailer", "Mason", "Admin").required().error(new Error("Role is required")),
 });
 
 const updateUserSchema = Joi.object().keys({
