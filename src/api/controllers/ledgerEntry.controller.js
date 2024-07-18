@@ -5,8 +5,8 @@ const { Op } = require("sequelize");
 
 exports.createLedgerEntry = async (req, res) => {
   try {
-    //req.body.CreatedBy = req.user.id;
-    //req.body.ModifiedBy = req.user.id;
+    req.body.CreatedBy = req.user.id;
+    req.body.ModifiedBy = req.user.id;
     const ledgerEntry = await LedgerEntry.create(req.body);
     return res
       .status(201)

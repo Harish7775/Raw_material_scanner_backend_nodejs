@@ -7,7 +7,7 @@ const { createLedgerEntrySchema, updateLedgerEntrySchema, getRecordsSchema } = r
 const router = express.Router();
 
 router.post('/addLedgerEntry', validateRole(["Admin", "Retailer"]), validate(createLedgerEntrySchema, 'body'), ledgerController.createLedgerEntry);
-router.get('/getAllLedgerEntries', validateRole(["Admin", "Retailer"]), validate(getRecordsSchema, 'query'), ledgerController.getAllLedgerEntries);
+router.get('/getAllLedgerEntries', validateRole(["Admin", "Retailer"]), ledgerController.getAllLedgerEntries);
 router.get('/getLedgerEntryById/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), ledgerController.getLedgerEntryById);
 router.put('/updateLedgerEntry/:id', validateRole(["Admin", "Retailer"]), validate(updateLedgerEntrySchema, 'body'), ledgerController.updateLedgerEntry);
 router.delete('/deleteLedgerEntry/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), ledgerController.deleteLedgerEntry);
