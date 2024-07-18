@@ -2,8 +2,8 @@ const express = require('express');
 const ledgerController = require('../controllers/ledgerEntry.controller');
 const { validate } = require('../../helper/customValidation');
 const validateRole = require('../middleware/role');
-const { getRecordsSchema, idSchema } = require('../validators/common.validator');
-const { createLedgerEntrySchema, updateLedgerEntrySchema } = require("../validators/ledgerEntry.validator");
+const { idSchema } = require('../validators/common.validator');
+const { createLedgerEntrySchema, updateLedgerEntrySchema, getRecordsSchema } = require("../validators/ledgerEntry.validator");
 const router = express.Router();
 
 router.post('/addLedgerEntry', validateRole(["Admin", "Retailer"]), validate(createLedgerEntrySchema, 'body'), ledgerController.createLedgerEntry);

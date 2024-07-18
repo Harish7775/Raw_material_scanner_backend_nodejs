@@ -24,6 +24,8 @@ exports.getAllLedgerEntries = async (req, res) => {
       sortBy = "LedgerId",
       sortOrder = "DESC",
       userIds,
+      fromDate,
+      toDate
     } = req.query;
 
     const offset = (page - 1) * pageSize;
@@ -39,6 +41,12 @@ exports.getAllLedgerEntries = async (req, res) => {
           [Op.in]: userIdsArray,
         },
       }),
+      ...(fromDate &&
+        toDate && {
+          createdAt: {
+            [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(23, 59, 59, 999))],
+          },
+        }),
     };
 
     const ledgerEntries = await LedgerEntry.findAndCountAll({
