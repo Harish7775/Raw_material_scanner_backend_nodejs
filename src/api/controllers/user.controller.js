@@ -210,6 +210,11 @@ exports.deleteUser = async (req, res) => {
     }
 
     await user.destroy();
+
+    const deleted = await LedgerEntry.destroy({
+      where: { UserId: userId },
+    });
+
     return res
       .status(200)
       .json({ success: true, message: "User deleted successfully" });

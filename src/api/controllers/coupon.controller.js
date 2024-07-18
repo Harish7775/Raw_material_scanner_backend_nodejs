@@ -40,6 +40,7 @@ exports.getAllCoupons = async (req, res) => {
       pageSize = 10,
       companyIds = [],
       categoryIds = [],
+      productIds = [],
       productCode = "",
       productName = "",
       reedemed = false,
@@ -64,6 +65,11 @@ exports.getAllCoupons = async (req, res) => {
       ...(companyIds.length > 0 && {
         "$Product.CompanyId$": {
           [Op.in]: companyIds,
+        },
+      }),
+      ...(productIds.length > 0 && {
+        "$Product.ProductId$": {
+          [Op.in]: productIds,
         },
       }),
       ...(categoryIds.length > 0 && {
