@@ -308,6 +308,11 @@ exports.resetPassword = async (req, res) => {
 exports.getRetailerDetailById = async (req, res) => {
   try {
     const id = req.params.id;
+    const {
+      sortBy = "createdAt",
+      sortOrder = "DESC",
+      search,
+    } = req.query;
 
     const ledgerEntries = await LedgerEntry.findAll({
       where: { RetailerUserId: id },
@@ -320,8 +325,18 @@ exports.getRetailerDetailById = async (req, res) => {
       ],
     });
 
-    const relatedMasons = await Users.findAll({
-      where: { CreatedBy: id },
+    const masonWhereCondition = {
+      CreatedBy: id,
+      ...(search && {
+        [Op.or]: [
+          { FirstName: { [Op.iLike]: `%${search}%` } },
+          { LastName: { [Op.iLike]: `%${search}%` } },
+        ],
+      }),
+    };
+
+    const relatedMasons = await Users.findAndCountAll({
+      where: masonWhereCondition,
       include: [
         {
           model: Coupon,
@@ -329,18 +344,21 @@ exports.getRetailerDetailById = async (req, res) => {
           attributes: ["CouponCode", "Amount", "RedeemDateTime"],
         },
       ],
+      order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
     const response = {
       ledgerEntries: ledgerEntries,
-      relatedMasons: relatedMasons.map((mason) => ({
+      relatedMasons: relatedMasons.rows.map((mason) => ({
         ...mason.toJSON(),
         ScannedCoupons: mason.ScannedCoupons.map((coupon) => coupon.toJSON()),
       })),
+      totalMasons: relatedMasons.count,
     };
 
     return res.status(200).json({ success: true, response });
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };

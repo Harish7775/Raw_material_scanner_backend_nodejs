@@ -14,5 +14,6 @@ router.delete('/deleteCoupon/:id', validateRole(["Admin"]), validate(idSchema, '
 router.get('/getRedeemCoupons/:id', validate(idSchema, 'params'), couponController.getCoupons);
 router.get('/getCouponByRole/:name', validate(getRoleByCouponSchema, 'params'), couponController.getCouponByRole);
 router.get('/getQrCodeHistory/:id', validate(idSchema, 'params'), couponController.getQrCodeHistory);
+router.get('/getCouponByCouponCode/:couponCode', validateRole(["Admin", "Retailer"]), couponController.getCouponByCouponCode);
 
 module.exports = router;
