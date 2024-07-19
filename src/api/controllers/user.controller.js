@@ -458,7 +458,7 @@ exports.getRetailerStats = async (req, res) => {
       },
     };
 
-    const [billedAmount, paidAmount, totalAmount, scannedQRCount] =
+    const [billedAmount, paidAmount, scannedQRCount, scannedQRAmount] =
       await Promise.all([
         LedgerEntry.sum("Amount", {
           ...ledgerQuery,
@@ -468,8 +468,15 @@ exports.getRetailerStats = async (req, res) => {
           ...ledgerQuery,
           where: { ...ledgerQuery.where, EntryType: "Credit" },
         }),
-        LedgerEntry.sum("Amount", ledgerQuery),
         Coupon.count({
+          where: {
+            RedeemDateTime: {
+              [Op.between]: [startDate, endDate],
+            },
+            RedeemBy: retailerId,
+          },
+        }),
+        Coupon.sum("Amount", {
           where: {
             RedeemDateTime: {
               [Op.between]: [startDate, endDate],
@@ -486,7 +493,7 @@ exports.getRetailerStats = async (req, res) => {
       data: {
         billedAmount: billedAmount || 0,
         outstandingAmount: outstandingAmount || 0,
-        totalAmount: totalAmount || 0,
+        scannedQRAmount: scannedQRAmount || 0,
         scannedQRCount: scannedQRCount || 0,
       },
     };
@@ -497,3 +504,4 @@ exports.getRetailerStats = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
