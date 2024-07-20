@@ -7,6 +7,7 @@ exports.createLedgerEntry = async (req, res) => {
   try {
     req.body.CreatedBy = req.user.id;
     req.body.ModifiedBy = req.user.id;
+    
     const ledgerEntry = await LedgerEntry.create(req.body);
     return res
       .status(201)
@@ -152,6 +153,7 @@ exports.getLedgerEntryByUserId = async (req, res) => {
     const id = req.params.id;
     const ledgerEntryByUser = await LedgerEntry.findAll({
       where: { RetailerUserId: id },
+      order: [['createdAt', 'DESC']],
     });
 
     if (!ledgerEntryByUser) {
@@ -160,7 +162,17 @@ exports.getLedgerEntryByUserId = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    return res.status(200).json({ success: true, ledgerEntryByUser });
+    const creditSum = await LedgerEntry.sum('Amount', {
+      where: { RetailerUserId: id, EntryType: 'Credit' }
+    });
+    
+    const debitSum = await LedgerEntry.sum('Amount', {
+      where: { RetailerUserId: id, EntryType: 'Debit' }
+    });
+
+    const total = (creditSum || 0) - (debitSum || 0);
+
+    return res.status(200).json({ success: true, ledgerEntryByUser, total });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }

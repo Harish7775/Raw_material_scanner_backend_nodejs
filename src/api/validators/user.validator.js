@@ -3,6 +3,8 @@ const Joi = require("joi");
 const createUserSchema = Joi.object().keys({
   FirstName: Joi.string().required().error(new Error("First Name is required")),
   LastName: Joi.string().optional(),
+  ShopName: Joi.string().optional(),
+  Address: Joi.string().optional(),
   Email: Joi.string()
     .email(),
   Phone: Joi.string()
@@ -19,6 +21,8 @@ const updateUserSchema = Joi.object().keys({
   FirstName: Joi.string(),
   LastName: Joi.string(),
   Email: Joi.string().email(),
+  ShopName: Joi.string().optional(),
+  Address: Joi.string().optional(),
   Password: Joi.string(),
   IsActive: Joi.boolean(),
 });

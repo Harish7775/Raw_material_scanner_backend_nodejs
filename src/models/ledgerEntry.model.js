@@ -11,6 +11,10 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.ENUM("Debit", "Credit"),
         allowNull: false,
       },
+      Note: {
+        type: Sequelize.STRING(100),
+        allowNull: true,
+      },
       Amount: {
         type: Sequelize.DECIMAL,
         allowNull: false,

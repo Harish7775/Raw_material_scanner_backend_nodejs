@@ -25,6 +25,8 @@ exports.createUser = async (req, res) => {
       Phone: req.body.Phone,
       Password: hashedPassword,
       RoleId: role.RoleId,
+      Address : req.body.Address,
+      ShopName : req.body.ShopName,
       CreatedBy: req?.user?.id,
       ModifiedBy: req?.user?.id,
     };
@@ -84,6 +86,9 @@ exports.getAllUsers = async (req, res) => {
       sortOrder = "DESC",
       search,
       RoleId,
+      Type,
+      fromDate,
+      toDate,
     } = req.query;
 
     page = parseInt(page) || 1;
@@ -108,8 +113,22 @@ exports.getAllUsers = async (req, res) => {
         },
       ],
     };
+    if(Type){
+      const roles = await Role.findOne({
+        where: {
+          Name:Type
+        },
+      });
+      where.RoleId = roles.RoleId;
+    }
     if (RoleId) {
       where.RoleId = RoleId;
+    }
+
+    if (fromDate && toDate) {
+      where.createdAt = {
+        [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(23, 59, 59, 999))],
+      };
     }
 
     const users = await Users.findAndCountAll({
@@ -118,6 +137,9 @@ exports.getAllUsers = async (req, res) => {
       limit,
       offset,
       RoleId,
+      attributes: {
+        exclude: ['Password'], 
+      },
       include: [
         {
           model: Role,
@@ -127,15 +149,49 @@ exports.getAllUsers = async (req, res) => {
       ],
     });
 
+ let usersWithMasonCount;
+ if(Type=="Retailer"){
+  const roles = await Role.findOne({
+    where: {
+      Name:"Mason"
+    },
+  });
+  const userIds = users.rows.map(user => user.UserId);
+  const masonCountData = await Users.findAll({
+    attributes: ['CreatedBy', [db.Sequelize.fn('COUNT', db.Sequelize.col('UserId')), 'masonCount']],
+    where: {
+      RoleId: { 
+        [Op.eq]: roles.RoleId
+      },
+      CreatedBy: {
+        [Op.in]: userIds
+      }
+    },
+    group: ['CreatedBy']
+  });
+ 
+  const masonCountMap = masonCountData.reduce((acc, item) => {
+    acc[item.CreatedBy] = item.getDataValue('masonCount');
+    return acc;
+  }, {});
+   usersWithMasonCount = users.rows.map(user => {
+   const userJson = user.toJSON();
+   userJson.masonCount = masonCountMap[user.UserId] || 0;
+   return userJson;
+ });
+ }
+  
+
     const totalPages = Math.ceil(users.count / limit);
 
     return res.status(200).json({
       success: true,
-      users: users.rows,
+      users: Type=="Retailer" ? usersWithMasonCount:users.rows,
       totalPages,
       currentPage: page,
     });
   } catch (error) {
+    console.log('error',error)
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -145,7 +201,7 @@ exports.getUserById = async (req, res) => {
     const id = req.params.id;
 
     const user = await Users.findByPk(id, {
-      attributes: ["FirstName", "LastName", "Email", "Phone"],
+      attributes: ["FirstName", "LastName", "Email", "Phone", "Address", "ShopName", ""],
     });
 
     if (!user) {

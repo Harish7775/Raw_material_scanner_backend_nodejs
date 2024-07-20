@@ -344,7 +344,7 @@ exports.getQrCodeHistory = async (req, res) => {
 
     if (amount) {
       whereCondition.Amount = {
-        [Op.eq]: amount,
+        [Op.lte]: amount,
       };
     }
 
@@ -354,6 +354,10 @@ exports.getQrCodeHistory = async (req, res) => {
         as: "RedeemToUser",
         attributes: ["FirstName", "LastName"],
         where: {},
+      },
+      {
+        model: Product,
+        attributes: ["Name"], 
       },
     ];
 
@@ -386,6 +390,7 @@ exports.getQrCodeHistory = async (req, res) => {
         name: coupon.RedeemToUser.FirstName,
         lastname: coupon.RedeemToUser.LastName,
       },
+      Product_Name: coupon.Product.Name,
     }));
 
     return res.status(200).json({ success: true, response });
@@ -397,7 +402,7 @@ exports.getQrCodeHistory = async (req, res) => {
 exports.getCouponByCouponCode = async (req, res) => {
   try {
     const couponCode = req.params.couponCode;
-    
+
     const coupon = await Coupon.findOne({
       where: { CouponCode: couponCode },
       include: [
