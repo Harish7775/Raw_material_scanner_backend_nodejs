@@ -6,7 +6,7 @@ const createUserSchema = Joi.object().keys({
   ShopName: Joi.string().optional(),
   Address: Joi.string().optional(),
   Email: Joi.string()
-    .email(),
+    .email().optional().allow(""),
   Phone: Joi.string()
     .required()
     .pattern(/^[0-9]{10}$/)
@@ -20,7 +20,7 @@ const createUserSchema = Joi.object().keys({
 const updateUserSchema = Joi.object().keys({
   FirstName: Joi.string(),
   LastName: Joi.string(),
-  Email: Joi.string().email(),
+  Email: Joi.string().email().optional().allow(""),
   ShopName: Joi.string().optional(),
   Address: Joi.string().optional(),
   Password: Joi.string(),

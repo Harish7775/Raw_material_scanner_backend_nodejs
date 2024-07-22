@@ -23,7 +23,6 @@ module.exports = (sequelize, Sequelize) => {
       },
       Email: {
         type: Sequelize.STRING,
-        allowNull: true,
       },
       Phone: {
         type: Sequelize.STRING,
