@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 const db = require("../../models");
 const Users = db.Users;
 const Coupon = db.Coupon;
+const Company = db.Company;
+const Product = db.Product;
 const LedgerEntry = db.LedgerEntry;
 const Role = db.Roles;
 const Token = db.Token;
@@ -432,7 +434,16 @@ exports.getDashboardStats = async (req, res) => {
         RoleId: retailerRole.RoleId,
       },
     });
-
+    const companyCount = await Company.count({
+      where: {
+        IsActive:true,
+      },
+    });
+    const productCount = await Product.count({
+      where: {
+        IsActive:true,
+      },
+    });
     const masonCount = await Users.count({
       where: {
         RoleId: masonRole.RoleId,
@@ -465,7 +476,9 @@ exports.getDashboardStats = async (req, res) => {
       success: true,
       data: {
         retailerCount,
+        companyCount,
         masonCount,
+        productCount,
         scannedCouponsCount,
         scannedCouponsAmount: scannedCouponsAmount || 0,
       },
