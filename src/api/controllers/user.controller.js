@@ -17,8 +17,12 @@ exports.createUser = async (req, res) => {
   try {
     const role = await Role.findOne({ where: { Name: req.body.Role } });
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(req.body.Password, salt);
+    let hashedPassword;
+
+    if (role.Name == "Admin") {
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(req.body.Password, salt);
+    }
 
     const user = {
       FirstName: req.body.FirstName,
