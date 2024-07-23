@@ -26,7 +26,8 @@ exports.getAllLedgerEntries = async (req, res) => {
       sortOrder = "DESC",
       userIds,
       fromDate,
-      toDate
+      toDate,
+      search
     } = req.query;
 
     const offset = (page - 1) * pageSize;
@@ -50,26 +51,30 @@ exports.getAllLedgerEntries = async (req, res) => {
         }),
     };
 
+    const includeCondition = [
+      {
+        model: Users,
+        as: "UserDetail",
+        attributes: ["FirstName", "LastName"],
+        where: {},
+      },
+    ];
+
+    if (search) {
+      includeCondition[0].where = {
+        [Op.or]: [
+          { FirstName: { [Op.iLike]: `%${search}%` } }
+        ],
+      };
+    }
+
     const ledgerEntries = await LedgerEntry.findAndCountAll({
       where: whereCondition,
-      include: [
-        {
-          model: Users,
-          as: "UserDetail",
-          attributes: ["FirstName", "LastName"],
-        },
-      ],
+      include: includeCondition,
       order: [[sortBy, sortOrder.toUpperCase()]],
       offset,
       limit,
     });
-
-    // const result = await Ledger.findOne({
-    //   where: { UserId: 1 },
-    //   include: [
-    //     { model: Users, attributes: ["FirstName", "LastName"] },
-    //   ],
-    // });
 
     return res.status(200).json({
       success: true,

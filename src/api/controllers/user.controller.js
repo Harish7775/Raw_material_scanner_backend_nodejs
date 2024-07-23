@@ -273,8 +273,8 @@ exports.deleteUser = async (req, res) => {
 
     await user.destroy();
 
-    const deleted = await LedgerEntry.destroy({
-      where: { UserId: userId },
+    await LedgerEntry.destroy({
+      where: { RetailerUserId: userId },
     });
 
     return res
