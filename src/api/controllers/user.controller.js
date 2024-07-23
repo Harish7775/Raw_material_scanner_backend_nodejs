@@ -252,7 +252,7 @@ exports.updateUser = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
     }
-
+    req.body.ModifiedBy = req.user.id;
     await user.update(req.body);
     return res.status(200).json({ success: true, user });
   } catch (error) {

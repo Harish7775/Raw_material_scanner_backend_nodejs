@@ -193,6 +193,7 @@ exports.getCouponById = async (req, res) => {
 exports.updateCoupon = async (req, res) => {
   try {
     const id = req.params.id;
+    req.body.ModifiedBy = req.user.id;
     const updateData = req.body;
 
     const coupon = await Coupon.findOne({
@@ -332,7 +333,7 @@ exports.getCouponByRole = async (req, res) => {
 exports.getQrCodeHistory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { fromDate, toDate, masonName, amount, sortBy = "RedeemDateTime", sortOrder = "DESC" } = req.query;
+    const { fromDate, toDate, fromAmount, toAmount, masonid, amount, sortBy = "RedeemDateTime", sortOrder = "DESC" } = req.body;
 
     const whereCondition = { RedeemBy: id };
 
@@ -342,10 +343,20 @@ exports.getQrCodeHistory = async (req, res) => {
       };
     }
 
+    if (fromAmount && toAmount) {
+      whereCondition.Amount = {
+        [Op.between]: [fromAmount, toAmount],
+      };
+    }
+
     if (amount) {
       whereCondition.Amount = {
         [Op.lte]: amount,
       };
+    }
+
+    if (masonid) {
+      whereCondition.RedeemTo = masonid;
     }
 
     const includeCondition = [
@@ -361,14 +372,6 @@ exports.getQrCodeHistory = async (req, res) => {
       },
     ];
 
-    if (masonName) {
-      includeCondition[0].where = {
-        [Op.or]: [
-          { FirstName: { [Op.iLike]: `%${masonName}%` } },
-          { LastName: { [Op.iLike]: `%${masonName}%` } },
-        ],
-      };
-    }
 
     const coupons = await Coupon.findAll({
       where: whereCondition,
