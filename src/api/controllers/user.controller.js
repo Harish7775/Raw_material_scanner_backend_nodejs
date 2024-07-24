@@ -95,6 +95,7 @@ exports.getAllUsers = async (req, res) => {
       Type,
       fromDate,
       toDate,
+      isActive
     } = req.query;
 
     page = parseInt(page) || 1;
@@ -126,8 +127,12 @@ exports.getAllUsers = async (req, res) => {
         },
       });
       where.RoleId = roles.RoleId;
-      where.IsActive = true;
     }
+
+    if(isActive){
+      where.IsActive = isActive;
+    }
+
     if (RoleId) {
       where.RoleId = RoleId;
     }
