@@ -26,10 +26,10 @@ const updateProductSchema = Joi.object().keys({
     WidthInCm: Joi.number().positive(),
     VolumeInLiter: Joi.number().positive(),
     Price: Joi.number().positive(),
-    DiscountPercentage: Joi.number().positive(),
-    SGSTPercentage: Joi.number().positive(),
-    CGSTPercentage: Joi.number().positive(),
-    IGSTPercentage: Joi.number().positive(),
+    DiscountPercentage: Joi.number().positive().optional(),
+    SGSTPercentage: Joi.number().positive().optional(),
+    CGSTPercentage: Joi.number().positive().optional(),
+    IGSTPercentage: Joi.number().positive().optional(),
     IsActive: Joi.boolean().default(true),
   });
 

@@ -126,6 +126,7 @@ exports.getAllUsers = async (req, res) => {
         },
       });
       where.RoleId = roles.RoleId;
+      where.IsActive = true;
     }
     if (RoleId) {
       where.RoleId = RoleId;
