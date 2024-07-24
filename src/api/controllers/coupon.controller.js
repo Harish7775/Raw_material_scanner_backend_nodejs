@@ -400,7 +400,7 @@ exports.getQrCodeHistory = async (req, res) => {
     if (coupons.length === 0) {
       return res
         .status(404)
-        .json({ success: false, message: "No coupons found for this user." });
+        .json({ success: false, message: "No coupons found for this user...!" });
     }
 
     const response = coupons.map((coupon) => ({
