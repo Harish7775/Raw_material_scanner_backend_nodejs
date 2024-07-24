@@ -132,13 +132,13 @@ exports.getAllCoupons = async (req, res) => {
             {
               model: Category,
               //as: 'category',
-              attributes: [ 'Name'], // Specify the attributes you need from Category
+              attributes: ["Name"], // Specify the attributes you need from Category
             },
             {
               model: Company,
               //as: 'company',
-              attributes: ['Name'], // Specify the attributes you need from Company
-            }
+              attributes: ["Name"], // Specify the attributes you need from Company
+            },
           ],
         },
         {
@@ -333,13 +333,25 @@ exports.getCouponByRole = async (req, res) => {
 exports.getQrCodeHistory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { fromDate, toDate, fromAmount, toAmount, masonid, amount, sortBy = "RedeemDateTime", sortOrder = "DESC" } = req.body;
+    const {
+      fromDate,
+      toDate,
+      fromAmount,
+      toAmount,
+      masonid,
+      amount,
+      sortBy = "RedeemDateTime",
+      sortOrder = "DESC",
+    } = req.body;
 
     const whereCondition = { RedeemBy: id };
 
     if (fromDate && toDate) {
       whereCondition.RedeemDateTime = {
-        [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(23, 59, 59, 999))],
+        [Op.between]: [
+          new Date(fromDate),
+          new Date(new Date(toDate).setHours(23, 59, 59, 999)),
+        ],
       };
     }
 
@@ -363,15 +375,20 @@ exports.getQrCodeHistory = async (req, res) => {
       {
         model: User,
         as: "RedeemToUser",
-        attributes: ["FirstName", "LastName"],
+        attributes: ["FirstName", "LastName", "Phone"],
         where: {},
       },
       {
         model: Product,
-        attributes: ["Name"], 
+        attributes: ["Name", "Price", "WeightInGrams"],
+        include: [
+          {
+            model: Company,
+            attributes: ["Name"],
+          },
+        ],
       },
     ];
-
 
     const coupons = await Coupon.findAll({
       where: whereCondition,
@@ -393,7 +410,12 @@ exports.getQrCodeHistory = async (req, res) => {
         name: coupon.RedeemToUser.FirstName,
         lastname: coupon.RedeemToUser.LastName,
       },
-      Product_Name: coupon.Product.Name,
+      Product_Name: {
+        name: coupon.Product.Name,
+        price: coupon.Product.Price,
+        weight: coupon.Product.WeightInGrams,
+        companyName: coupon.Product.Company.Name,
+      }
     }));
 
     return res.status(200).json({ success: true, response });
