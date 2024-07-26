@@ -7,6 +7,7 @@ const Company = db.Company;
 const User = db.Users;
 const { Op } = require("sequelize");
 const moment = require("moment");
+const sendSms = require("../../helper/sendsms");
 
 exports.createCoupon = async (req, res) => {
   try {
@@ -229,6 +230,13 @@ exports.updateCoupon = async (req, res) => {
         .json({ success: false, message: "Coupon not found" });
     }
 
+    if (req.body.RedeemBy && req.body.RedeemTo) {
+      const user = await User.findByPk(req.body.RedeemTo);
+      const to = `+91${user.Phone}`;
+      const message = `Hi ${user.FirstName}, Your coupon has been redeemed successfully..!`;
+      await sendSms(to, message);
+    }
+
     return res
       .status(200)
       .json({ success: true, message: "Coupon updated successfully!" });
@@ -400,7 +408,10 @@ exports.getQrCodeHistory = async (req, res) => {
     if (coupons.length === 0) {
       return res
         .status(404)
-        .json({ success: false, message: "No coupons found for this user...!" });
+        .json({
+          success: false,
+          message: "No coupons found for this user...!",
+        });
     }
 
     const response = coupons.map((coupon) => ({
@@ -417,7 +428,7 @@ exports.getQrCodeHistory = async (req, res) => {
         price: coupon.Product.Price,
         weight: coupon.Product.WeightInGrams,
         companyName: coupon.Product.Company.Name,
-      }
+      },
     }));
 
     return res.status(200).json({ success: true, response });

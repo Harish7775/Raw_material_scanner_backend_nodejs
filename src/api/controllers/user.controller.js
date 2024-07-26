@@ -201,7 +201,7 @@ exports.getAllUsers = async (req, res) => {
       users: Type=="Retailer" ? usersWithMasonCount:users.rows,
       totalPages,
       currentPage: page,
-      totalUsersCount: users.count,
+      totalItems: users.count,
     });
   } catch (error) {
     console.log('error',error)
