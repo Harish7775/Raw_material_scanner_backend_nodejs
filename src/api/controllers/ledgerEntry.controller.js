@@ -63,7 +63,7 @@ exports.getAllLedgerEntries = async (req, res) => {
     if (search) {
       includeCondition[0].where = {
         [Op.or]: [
-          { FirstName: { [Op.iLike]: `%${search}%` } }
+          { FirstName: { [Op.iLike]: `%${search}%` } },
         ],
       };
     }
@@ -76,9 +76,30 @@ exports.getAllLedgerEntries = async (req, res) => {
       limit,
     });
 
+    let userSums = [];
+    if (userIdsArray.length > 0) {
+      userSums = await Promise.all(userIdsArray.map(async (userId) => {
+        const creditSum = await LedgerEntry.sum('Amount', {
+          where: { RetailerUserId: userId, EntryType: 'Credit' }
+        });
+
+        const debitSum = await LedgerEntry.sum('Amount', {
+          where: { RetailerUserId: userId, EntryType: 'Debit' }
+        });
+
+        return {
+          userId,
+          creditSum: creditSum || 0,
+          debitSum: debitSum || 0,
+          netAmount: (debitSum || 0) -(creditSum || 0)
+        };
+      }));
+    }
+
     return res.status(200).json({
       success: true,
       ledgerEntries: ledgerEntries.rows,
+      userSums,
       totalItems: ledgerEntries.count,
       totalPages: Math.ceil(ledgerEntries.count / limit),
       currentPage: parseInt(page),

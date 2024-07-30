@@ -51,15 +51,16 @@ exports.adminLogin = async (req, res) => {
   try {
     const { Phone, Password } = req.body;
 
-    const admin = await Users.findOne({ where: { Phone } });
-    const RoleId = admin.RoleId;
-    const role = await db.Roles.findOne({ where: { RoleId: RoleId } });
+    const admin = await Users.findOne({ where: { Phone, IsActive: true } });
 
     if (!admin) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
+
+    const RoleId = admin.RoleId;
+    const role = await db.Roles.findOne({ where: { RoleId: RoleId } });
 
     if (role.Name == "Admin") {
       const isPasswordValid = await bcrypt.compare(Password, admin.Password);
