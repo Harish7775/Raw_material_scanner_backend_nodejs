@@ -91,7 +91,7 @@ exports.getAllLedgerEntries = async (req, res) => {
           userId,
           creditSum: creditSum || 0,
           debitSum: debitSum || 0,
-          netAmount: (debitSum || 0) -(creditSum || 0)
+          netAmount: (creditSum || 0) - (debitSum || 0)
         };
       }));
     }
