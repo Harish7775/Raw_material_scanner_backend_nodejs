@@ -400,7 +400,7 @@ exports.getQrCodeHistory = async (req, res) => {
 
     const coupons = await Coupon.findAll({
       where: whereCondition,
-      attributes: ["Amount", "RedeemDateTime", "RedeemTo", "CouponCode"],
+      attributes: ["Amount", "RedeemDateTime", "RedeemTo", "CouponCode", "CouponId"],
       include: includeCondition,
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
@@ -418,6 +418,7 @@ exports.getQrCodeHistory = async (req, res) => {
       Amount: coupon.Amount,
       RedeemDateTime: coupon.RedeemDateTime,
       couponCode: coupon.CouponCode,
+      CouponId: coupon.CouponId,
       Mason_Name: {
         name: coupon.RedeemToUser.FirstName,
         lastname: coupon.RedeemToUser.LastName,
