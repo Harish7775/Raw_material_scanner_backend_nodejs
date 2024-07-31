@@ -352,7 +352,7 @@ exports.getQrCodeHistory = async (req, res) => {
       sortOrder = "DESC",
       page = 1,
       pageSize = 10
-    } = req.query;
+    } = req.body;
 
     const offset = (page - 1) * pageSize;
     const limit = parseInt(pageSize);
