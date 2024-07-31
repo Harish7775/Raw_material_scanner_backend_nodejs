@@ -350,7 +350,12 @@ exports.getQrCodeHistory = async (req, res) => {
       amount,
       sortBy = "RedeemDateTime",
       sortOrder = "DESC",
-    } = req.body;
+      page = 1,
+      pageSize = 10
+    } = req.query;
+
+    const offset = (page - 1) * pageSize;
+    const limit = parseInt(pageSize);
 
     const whereCondition = { RedeemBy: id };
 
@@ -398,20 +403,20 @@ exports.getQrCodeHistory = async (req, res) => {
       },
     ];
 
-    const coupons = await Coupon.findAll({
+    const { count, rows: coupons } = await Coupon.findAndCountAll({
       where: whereCondition,
       attributes: ["Amount", "RedeemDateTime", "RedeemTo", "CouponCode", "CouponId"],
       include: includeCondition,
       order: [[sortBy, sortOrder.toUpperCase()]],
+      offset,
+      limit,
     });
 
-    if (coupons.length === 0) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "No coupons found for this user...!",
-        });
+    if (count === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No coupons found for this user...!",
+      });
     }
 
     const response = coupons.map((coupon) => ({
@@ -432,11 +437,18 @@ exports.getQrCodeHistory = async (req, res) => {
       },
     }));
 
-    return res.status(200).json({ success: true, response });
+    return res.status(200).json({
+      success: true,
+      response,
+      totalItems: count,
+      totalPages: Math.ceil(count / pageSize),
+      currentPage: parseInt(page),
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
 
 exports.getCouponByCouponCode = async (req, res) => {
   try {
