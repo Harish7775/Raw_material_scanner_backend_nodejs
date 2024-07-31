@@ -12,11 +12,9 @@ module.exports = (sequelize, Sequelize) => {
       },
       ShopName: {
         type: Sequelize.STRING(100),
-        allowNull: true,
       },
       Address: {
         type: Sequelize.STRING(300),
-        allowNull: true,
       },
       LastName: {
         type: Sequelize.STRING,
