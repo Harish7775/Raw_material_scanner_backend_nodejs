@@ -19,6 +19,15 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.DECIMAL,
         allowNull: false,
       },
+      TransactionDate: {
+        type: Sequelize.DATE,
+      },
+      Unit: {
+        type: Sequelize.INTEGER,
+      },
+      PersonalNote: {
+        type: Sequelize.STRING(100),
+      },
       RetailerUserId: {
         type: Sequelize.INTEGER,
       },

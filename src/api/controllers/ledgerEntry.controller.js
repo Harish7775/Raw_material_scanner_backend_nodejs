@@ -130,10 +130,10 @@ exports.getLedgerEntryById = async (req, res) => {
 exports.updateLedgerEntry = async (req, res) => {
   try {
     const id = req.params.id;
-    const { EntryType, Amount } = req.body;
+    const { EntryType, Amount, TransactionDate, Unit, PersonalNote } = req.body;
 
     const [updated] = await LedgerEntry.update(
-      { EntryType, Amount },
+      { EntryType, Amount, TransactionDate, Unit, PersonalNote },
       {
         where: { LedgerId: id },
       }
@@ -144,7 +144,7 @@ exports.updateLedgerEntry = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Ledger entry not found" });
     }
-    //req.body.ModifiedBy = req.user.id;
+    req.body.ModifiedBy = req.user.id;
     const updatedLedgerEntry = await LedgerEntry.findByPk(id);
     return res.status(200).json({ success: true, updatedLedgerEntry });
   } catch (error) {
