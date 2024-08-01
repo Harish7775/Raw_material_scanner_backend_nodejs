@@ -45,7 +45,7 @@ exports.getAllLedgerEntries = async (req, res) => {
       }),
       ...(fromDate &&
         toDate && {
-          createdAt: {
+          TransactionDate: {
             [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(23, 59, 59, 999))],
           },
         }),

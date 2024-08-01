@@ -53,10 +53,14 @@ exports.getAllCoupons = async (req, res) => {
       toExpiryDate = "",
       masonsCoupon = [],
       retailersCoupon = [],
+      flag = false
     } = req.body;
 
     const offset = (page - 1) * pageSize;
     const limit = parseInt(pageSize);
+
+    const startDate = moment().startOf("month").toDate();
+    const endDate = moment().endOf("month").toDate();
 
     const whereCondition = {
       ...(search && {
@@ -92,6 +96,14 @@ exports.getAllCoupons = async (req, res) => {
       ...(reedemed == true && {
         RedeemBy: {
           [Op.not]: null,
+        },
+      }),
+      ...(reedemed == true && flag == true && {
+        RedeemBy: {
+          [Op.not]: null,
+        },
+        RedeemDateTime: {
+          [Op.between]: [startDate, endDate],
         },
       }),
       ...(unReedemed == true && {
