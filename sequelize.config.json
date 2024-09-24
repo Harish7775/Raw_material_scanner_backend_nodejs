@@ -1,20 +1,23 @@
 {
-    "username": "postgres",
-    "password": "root",
-    "database": "Paint",
-    "host": "localhost",
+    "username": "pulkit_paint_user",
+    "password": "pOu5j1TGR6TDNMTvTwMMcqI5B3XC8gcf",
+    "database": "pulkit_paint",
+    "host": "dpg-crndjn88fa8c738e5ab0-a.singapore-postgres.render.com",
     "dialect": "postgres",
     "logging": false,
     "pool": {
-        "max": 5,
+        "max": 10,
         "min": 0,
         "acquire": 30000,
         "idle": 10000
     },
-    "ssl": true,
     "port": 5432,
-    "JWT_SECRET" : "somethingRandom",
-    "JWT_ACCESS_EXPIRATION_MINUTES": "7d",
-    "seederStorage":"sequelize",
+    "dialectOptions": {
+        "ssl": {
+            "require": true,
+            "rejectUnauthorized": false
+        }
+    },
+    "seederStorage": "sequelize",
     "seederStorageTableName": "SequelizeData"
 }
