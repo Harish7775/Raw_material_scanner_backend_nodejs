@@ -19,17 +19,18 @@ const createProductSchema = Joi.object().keys({
 
 const updateProductSchema = Joi.object().keys({
     Name: Joi.string(),
+    ProductCode: Joi.string(),
     CategoryId: Joi.number(),
     CompanyId: Joi.number(),
-    WeightInGrams: Joi.number().positive(),
-    HeightInCm: Joi.number().positive(),
-    WidthInCm: Joi.number().positive(),
+    WeightInGrams: Joi.number().min(0).optional(),
+    HeightInCm: Joi.number().min(0).optional(),
+    WidthInCm: Joi.number().min(0).optional(),
     VolumeInLiter: Joi.number().positive(),
     Price: Joi.number().positive(),
-    DiscountPercentage: Joi.number().positive().optional(),
-    SGSTPercentage: Joi.number().positive().optional(),
-    CGSTPercentage: Joi.number().positive().optional(),
-    IGSTPercentage: Joi.number().positive().optional(),
+    DiscountPercentage: Joi.number().min(0).optional(),
+    SGSTPercentage: Joi.number().min(0).optional(),
+    CGSTPercentage: Joi.number().min(0).optional(),
+    IGSTPercentage: Joi.number().min(0).optional(),
     IsActive: Joi.boolean().default(true),
   });
 
