@@ -206,7 +206,7 @@ exports.getCouponById = async (req, res) => {
 exports.updateCoupon = async (req, res) => {
   try {
     const id = req.params.id;
-    req.body.ModifiedBy = req.user.id;
+    // req.body.ModifiedBy = req.user.id;
     const updateData = req.body;
 
     const coupon = await Coupon.findOne({
@@ -245,7 +245,14 @@ exports.updateCoupon = async (req, res) => {
     if (req.body.RedeemBy && req.body.RedeemTo) {
       const user = await User.findByPk(req.body.RedeemTo);
       const to = `+91${user.Phone}`;
-      const message = `Hi ${user.FirstName}, Your coupon has been redeemed successfully..!`;
+      const coupons = await Coupon.findAll({ 
+        where: { RedeemTo: req.body.RedeemTo },
+      });
+      const totalRedeemedAmount = coupons.reduce((acc, coupon) => {
+        return acc + parseFloat(coupon.Amount);
+      }, 0);
+      const redeemedAmount = coupon.Amount;
+      const message = `Hi ${user.FirstName}, Your coupon of ₹${redeemedAmount} has been redeemed successfully! The total amount you have redeemed so far is ₹${totalRedeemedAmount}.`;
       await sendSms(to, message);
     }
 
@@ -253,6 +260,7 @@ exports.updateCoupon = async (req, res) => {
       .status(200)
       .json({ success: true, message: "Coupon updated successfully!" });
   } catch (error) {
+    console.log(error)
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
