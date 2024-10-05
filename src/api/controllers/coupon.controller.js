@@ -5,6 +5,7 @@ const Role = db.Roles;
 const Category = db.Category;
 const Company = db.Company;
 const User = db.Users;
+const RewardPoints = db.RewardPoints;
 const { Op } = require("sequelize");
 const moment = require("moment");
 const sendSms = require("../../helper/sendsms");
@@ -53,7 +54,7 @@ exports.getAllCoupons = async (req, res) => {
       toExpiryDate = "",
       masonsCoupon = [],
       retailersCoupon = [],
-      flag = false
+      flag = false,
     } = req.body;
 
     const offset = (page - 1) * pageSize;
@@ -98,14 +99,15 @@ exports.getAllCoupons = async (req, res) => {
           [Op.not]: null,
         },
       }),
-      ...(reedemed == true && flag == true && {
-        RedeemBy: {
-          [Op.not]: null,
-        },
-        RedeemDateTime: {
-          [Op.between]: [startDate, endDate],
-        },
-      }),
+      ...(reedemed == true &&
+        flag == true && {
+          RedeemBy: {
+            [Op.not]: null,
+          },
+          RedeemDateTime: {
+            [Op.between]: [startDate, endDate],
+          },
+        }),
       ...(unReedemed == true && {
         RedeemBy: {
           [Op.is]: null,
@@ -206,7 +208,7 @@ exports.getCouponById = async (req, res) => {
 exports.updateCoupon = async (req, res) => {
   try {
     const id = req.params.id;
-    // req.body.ModifiedBy = req.user.id;
+    req.body.ModifiedBy = req.user.id;
     const updateData = req.body;
 
     const coupon = await Coupon.findOne({
@@ -243,24 +245,48 @@ exports.updateCoupon = async (req, res) => {
     }
 
     if (req.body.RedeemBy && req.body.RedeemTo) {
-      const user = await User.findByPk(req.body.RedeemTo);
-      const to = `+91${user.Phone}`;
-      const coupons = await Coupon.findAll({ 
+      const [mason, retailer] = await Promise.all([
+        User.findByPk(req.body.RedeemTo),
+        User.findByPk(req.body.RedeemBy),
+      ]);
+
+      const toMason = `+91${mason.Phone}`;
+      const toRetailer = `+91${retailer.Phone}`;
+
+      const totalRedeemedAmount = await Coupon.sum("Amount", {
         where: { RedeemTo: req.body.RedeemTo },
       });
-      const totalRedeemedAmount = coupons.reduce((acc, coupon) => {
-        return acc + parseFloat(coupon.Amount);
-      }, 0);
+
       const redeemedAmount = coupon.Amount;
-      const message = `Hi ${user.FirstName}, Your coupon of ₹${redeemedAmount} has been redeemed successfully! The total amount you have redeemed so far is ₹${totalRedeemedAmount}.`;
-      await sendSms(to, message);
+      const product = await Product.findByPk(coupon.ProductId);
+
+      await RewardPoints.create({
+        RetailerId: req.body.RedeemBy,
+        ProductId: product.ProductId,
+        CouponId: id,
+        RewardPointValue: product.RewardPointValue,
+        CreatedBy: req.user.id,
+        ModifiedBy: req.user.id,
+      });
+
+      const totalRewardPoints = await RewardPoints.sum('RewardPointValue', {
+        where: { RetailerId: req.body.RedeemBy },
+      });
+
+      const messageMason = `Hi ${mason.FirstName}, Your coupon of ₹${redeemedAmount} has been redeemed successfully! The total amount you have redeemed so far is ₹${totalRedeemedAmount}.`;
+      const messageRetailer = `Hi ${retailer.FirstName}, You have now accumulated a total of ${totalRewardPoints} reward points.`;
+
+      await Promise.all([
+        sendSms(toMason, messageMason),
+        sendSms(toRetailer, messageRetailer),
+      ]);
     }
 
     return res
       .status(200)
       .json({ success: true, message: "Coupon updated successfully!" });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -371,7 +397,7 @@ exports.getQrCodeHistory = async (req, res) => {
       sortBy = "RedeemDateTime",
       sortOrder = "DESC",
       page = 1,
-      pageSize = 10
+      pageSize = 10,
     } = req.body;
 
     const offset = (page - 1) * pageSize;
@@ -425,7 +451,13 @@ exports.getQrCodeHistory = async (req, res) => {
 
     const { count, rows: coupons } = await Coupon.findAndCountAll({
       where: whereCondition,
-      attributes: ["Amount", "RedeemDateTime", "RedeemTo", "CouponCode", "CouponId"],
+      attributes: [
+        "Amount",
+        "RedeemDateTime",
+        "RedeemTo",
+        "CouponCode",
+        "CouponId",
+      ],
       include: includeCondition,
       order: [[sortBy, sortOrder.toUpperCase()]],
       offset,
@@ -468,7 +500,6 @@ exports.getQrCodeHistory = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
-
 
 exports.getCouponByCouponCode = async (req, res) => {
   try {
