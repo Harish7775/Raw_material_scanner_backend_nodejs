@@ -26,6 +26,11 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.INTEGER,
         allowNull: true,
       },
+      RewardPointValue: {
+        type: Sequelize.DECIMAL,
+        allowNull: false,
+        defaultValue: 0.00,
+      },
       HeightInCm: {
         type: Sequelize.DECIMAL,
         allowNull: true,
