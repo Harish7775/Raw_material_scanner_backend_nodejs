@@ -8,6 +8,7 @@ const Product = db.Product;
 const LedgerEntry = db.LedgerEntry;
 const Role = db.Roles;
 const Token = db.Token;
+const RewardPoints = db.RewardPoints;
 const { Op } = require("sequelize");
 const moment = require("moment");
 const crypto = require("crypto");
@@ -31,8 +32,8 @@ exports.createUser = async (req, res) => {
       Phone: req.body.Phone,
       Password: hashedPassword,
       RoleId: role.RoleId,
-      Address : req.body.Address,
-      ShopName : req.body.ShopName,
+      Address: req.body.Address,
+      ShopName: req.body.ShopName,
       CreatedBy: req?.user?.id,
       ModifiedBy: req?.user?.id,
     };
@@ -96,7 +97,7 @@ exports.getAllUsers = async (req, res) => {
       Type,
       fromDate,
       toDate,
-      isActive
+      isActive,
     } = req.query;
 
     page = parseInt(page) || 1;
@@ -121,16 +122,16 @@ exports.getAllUsers = async (req, res) => {
         },
       ],
     };
-    if(Type){
+    if (Type) {
       const roles = await Role.findOne({
         where: {
-          Name:Type
+          Name: Type,
         },
       });
       where.RoleId = roles.RoleId;
     }
 
-    if(isActive){
+    if (isActive) {
       where.IsActive = isActive;
     }
 
@@ -140,7 +141,10 @@ exports.getAllUsers = async (req, res) => {
 
     if (fromDate && toDate) {
       where.createdAt = {
-        [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(23, 59, 59, 999))],
+        [Op.between]: [
+          new Date(fromDate),
+          new Date(new Date(toDate).setHours(23, 59, 59, 999)),
+        ],
       };
     }
 
@@ -151,7 +155,7 @@ exports.getAllUsers = async (req, res) => {
       offset,
       RoleId,
       attributes: {
-        exclude: ['Password'], 
+        exclude: ["Password"],
       },
       include: [
         {
@@ -162,50 +166,73 @@ exports.getAllUsers = async (req, res) => {
       ],
     });
 
- let usersWithMasonCount;
- if(Type=="Retailer"){
-  const roles = await Role.findOne({
-    where: {
-      Name:"Mason"
-    },
-  });
-  const userIds = users.rows.map(user => user.UserId);
-  const masonCountData = await Users.findAll({
-    attributes: ['CreatedBy', [db.Sequelize.fn('COUNT', db.Sequelize.col('UserId')), 'masonCount']],
-    where: {
-      RoleId: { 
-        [Op.eq]: roles.RoleId
-      },
-      CreatedBy: {
-        [Op.in]: userIds
-      }
-    },
-    group: ['CreatedBy']
-  });
- 
-  const masonCountMap = masonCountData.reduce((acc, item) => {
-    acc[item.CreatedBy] = item.getDataValue('masonCount');
-    return acc;
-  }, {});
-   usersWithMasonCount = users.rows.map(user => {
-   const userJson = user.toJSON();
-   userJson.masonCount = masonCountMap[user.UserId] || 0;
-   return userJson;
- });
- }
-  
+    let usersWithMasonCount;
+    if (Type == "Retailer") {
+      const roles = await Role.findOne({
+        where: {
+          Name: "Mason",
+        },
+      });
+      const userIds = users.rows.map((user) => user.UserId);
+      const masonCountData = await Users.findAll({
+        attributes: [
+          "CreatedBy",
+          [db.Sequelize.fn("COUNT", db.Sequelize.col("UserId")), "masonCount"],
+        ],
+        where: {
+          RoleId: {
+            [Op.eq]: roles.RoleId,
+          },
+          CreatedBy: {
+            [Op.in]: userIds,
+          },
+        },
+        group: ["CreatedBy"],
+      });
+
+      const masonCountMap = masonCountData.reduce((acc, item) => {
+        acc[item.CreatedBy] = item.getDataValue("masonCount");
+        return acc;
+      }, {});
+
+      const rewardPointsData = await RewardPoints.findAll({
+        attributes: [
+          "RetailerId",
+          [
+            db.Sequelize.fn("SUM", db.Sequelize.col("RewardPointValue")),
+            "totalRewardPoints",
+          ],
+        ],
+        where: {
+          RetailerId: { [Op.in]: userIds },
+        },
+        group: ["RetailerId"],
+      });
+
+      const rewardPointsMap = rewardPointsData.reduce((acc, item) => {
+        acc[item.RetailerId] = item.getDataValue("totalRewardPoints") || 0;
+        return acc;
+      }, {});
+
+      usersWithMasonCount = users.rows.map((user) => {
+        const userJson = user.toJSON();
+        userJson.masonCount = masonCountMap[user.UserId] || 0;
+        userJson.totalRewardPoints = rewardPointsMap[user.UserId] || 0;
+        return userJson;
+      });
+    }
 
     const totalPages = Math.ceil(users.count / limit);
 
     return res.status(200).json({
       success: true,
-      users: Type=="Retailer" ? usersWithMasonCount:users.rows,
+      users: Type == "Retailer" ? usersWithMasonCount : users.rows,
       totalPages,
       currentPage: page,
       totalItems: users.count,
     });
   } catch (error) {
-    console.log('error',error)
+    console.log("error", error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -215,7 +242,14 @@ exports.getUserById = async (req, res) => {
     const id = req.params.id;
 
     const user = await Users.findByPk(id, {
-      attributes: ["FirstName", "LastName", "Email", "Phone", "Address", "ShopName"],
+      attributes: [
+        "FirstName",
+        "LastName",
+        "Email",
+        "Phone",
+        "Address",
+        "ShopName",
+      ],
     });
 
     if (!user) {
@@ -378,11 +412,7 @@ exports.resetPassword = async (req, res) => {
 exports.getRetailerDetailById = async (req, res) => {
   try {
     const id = req.params.id;
-    const {
-      sortBy = "createdAt",
-      sortOrder = "DESC",
-      search,
-    } = req.query;
+    const { sortBy = "createdAt", sortOrder = "DESC", search } = req.query;
 
     const ledgerEntries = await LedgerEntry.findAll({
       where: { RetailerUserId: id },
@@ -448,12 +478,12 @@ exports.getDashboardStats = async (req, res) => {
     });
     const companyCount = await Company.count({
       where: {
-        IsActive:true,
+        IsActive: true,
       },
     });
     const productCount = await Product.count({
       where: {
-        IsActive:true,
+        IsActive: true,
       },
     });
     const masonCount = await Users.count({
@@ -557,33 +587,43 @@ exports.getRetailerStats = async (req, res) => {
       },
     };
 
-    const [billedAmount, paidAmount, scannedQRCount, scannedQRAmount] =
-      await Promise.all([
-        LedgerEntry.sum("Amount", {
-          ...ledgerQuery,
-          where: { ...ledgerQuery.where, EntryType: "Debit" },
-        }),
-        LedgerEntry.sum("Amount", {
-          ...ledgerQuery,
-          where: { ...ledgerQuery.where, EntryType: "Credit" },
-        }),
-        Coupon.count({
-          where: {
-            RedeemDateTime: {
-              [Op.between]: [startDate, endDate],
-            },
-            RedeemBy: retailerId,
+    const [
+      billedAmount,
+      paidAmount,
+      scannedQRCount,
+      scannedQRAmount,
+      totalRewardPoints,
+    ] = await Promise.all([
+      LedgerEntry.sum("Amount", {
+        ...ledgerQuery,
+        where: { ...ledgerQuery.where, EntryType: "Debit" },
+      }),
+      LedgerEntry.sum("Amount", {
+        ...ledgerQuery,
+        where: { ...ledgerQuery.where, EntryType: "Credit" },
+      }),
+      Coupon.count({
+        where: {
+          RedeemDateTime: {
+            [Op.between]: [startDate, endDate],
           },
-        }),
-        Coupon.sum("Amount", {
-          where: {
-            RedeemDateTime: {
-              [Op.between]: [startDate, endDate],
-            },
-            RedeemBy: retailerId,
+          RedeemBy: retailerId,
+        },
+      }),
+      Coupon.sum("Amount", {
+        where: {
+          RedeemDateTime: {
+            [Op.between]: [startDate, endDate],
           },
-        }),
-      ]);
+          RedeemBy: retailerId,
+        },
+      }),
+      RewardPoints.sum("RewardPointValue", {
+        where: {
+          RetailerId: retailerId,
+        },
+      }),
+    ]);
 
     const outstandingAmount = (billedAmount || 0) - (paidAmount || 0);
 
@@ -594,6 +634,7 @@ exports.getRetailerStats = async (req, res) => {
         outstandingAmount: outstandingAmount || 0,
         scannedQRAmount: scannedQRAmount || 0,
         scannedQRCount: scannedQRCount || 0,
+        totalRewardPoints: totalRewardPoints,
       },
     };
 
@@ -603,4 +644,3 @@ exports.getRetailerStats = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
-
