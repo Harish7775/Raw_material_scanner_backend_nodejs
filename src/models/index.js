@@ -24,7 +24,8 @@ db.Product = require("./product.model.js")(sequelize, Sequelize);
 db.LedgerEntry = require("./ledgerEntry.model.js")(sequelize, Sequelize);
 db.Coupon = require("./coupon.model.js")(sequelize, Sequelize);
 db.Token = require("./token.model.js")(sequelize, Sequelize);
-db.RewardPoints = require("./rewardPoint.model.js")(sequelize, Sequelize);
+db.MasonSoDetail = require("./masonSoDetail.model.js")(sequelize, Sequelize);
+db.MasonSo = require("./masonSo.model.js")(sequelize, Sequelize);
 
 Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {

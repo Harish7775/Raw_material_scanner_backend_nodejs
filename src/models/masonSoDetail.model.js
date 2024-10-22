@@ -1,27 +1,22 @@
 module.exports = (sequelize, Sequelize) => {
-    const RewardPoint = sequelize.define(
-      "RewardPoint",
+    const MasonSoDetail = sequelize.define(
+      "MasonSoDetail",
       {
-        RewardPointId: {
+        MasonSoDetailId: {
           type: Sequelize.INTEGER,
           primaryKey: true,
           autoIncrement: true,
         },        
-        RetailerId: {
+        MasonSoId: {
             type: Sequelize.INTEGER,
         },
         ProductId: {
           type: Sequelize.INTEGER,
-        },
-        CouponId: {
-            type: Sequelize.INTEGER,
-        },
-        RewardDate: {
-          type: Sequelize.DATE,
-          defaultValue: Sequelize.NOW,
-          allowNull: false,
-        },
-        RewardPointValue: {
+        },  
+        Quantity: {
+          type: Sequelize.INTEGER,
+        }, 
+        RewardPoints: {
           type: Sequelize.DECIMAL,
           allowNull: false,
           defaultValue: 0.00,
@@ -41,33 +36,28 @@ module.exports = (sequelize, Sequelize) => {
       }
     );
     
-    RewardPoint.associate = function (models) {
-        RewardPoint.belongsTo(models.Product, {
+    MasonSoDetail.associate = function (models) {
+      MasonSoDetail.belongsTo(models.Product, {
           foreignKey: "ProductId",
           targetKey: "ProductId",
           constraints: true,
         });
-        RewardPoint.belongsTo(models.Users, {
-          foreignKey: "RetailerId",
-          targetKey: "UserId",
+        MasonSoDetail.belongsTo(models.MasonSo, {
+          foreignKey: "MasonSoId",
+          targetKey: "MasonSoId",
           constraints: true,
         });
-        RewardPoint.belongsTo(models.Coupon, {
-          foreignKey: "CouponId",
-          targetKey: "CouponId",
-          constraints: true,
-        });
-        RewardPoint.belongsTo(models.Users, {
+        MasonSoDetail.belongsTo(models.Users, {
           foreignKey: "CreatedBy",
           targetKey: "UserId",
           constraints: true,
         });
-        RewardPoint.belongsTo(models.Users, {
+        MasonSoDetail.belongsTo(models.Users, {
           foreignKey: "ModifiedBy",
           targetKey: "UserId",
           constraints: true,
         });
       };
-    return RewardPoint;
+    return MasonSoDetail;
   };
   

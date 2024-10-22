@@ -8,10 +8,12 @@ const Product = db.Product;
 const LedgerEntry = db.LedgerEntry;
 const Role = db.Roles;
 const Token = db.Token;
-const { Op } = require("sequelize");
+const MasonSo = db.MasonSo;
+const { Op, fn, col, literal } = require("sequelize");
 const moment = require("moment");
 const crypto = require("crypto");
 const sendMail = require("../../helper/sendMail");
+const axios = require("axios");
 
 exports.createUser = async (req, res) => {
   try {
@@ -31,10 +33,11 @@ exports.createUser = async (req, res) => {
       Phone: req.body.Phone,
       Password: hashedPassword,
       RoleId: role.RoleId,
-      Address : req.body.Address,
-      ShopName : req.body.ShopName,
+      Address: req.body.Address,
+      ShopName: req.body.ShopName,
       CreatedBy: req?.user?.id,
       ModifiedBy: req?.user?.id,
+      IsActive: req.body.IsActive,
     };
 
     const data = await Users.create(user);
@@ -84,6 +87,121 @@ exports.adminLogin = async (req, res) => {
   }
 };
 
+exports.sendOtp = async (req, res) => {
+  try {
+    const { Phone } = req.body;
+
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(Phone)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid phone number format. Please enter a 10-digit phone number.",
+      });
+    }
+
+    const user = await Users.findOne({ where: { Phone, IsActive: true } });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not registered..!" });
+    }
+
+    const smstemp = `Your TruBond Login OTP is {otp} SRG Enterprises https://srgenterprises.in/`;
+
+    const apiUrl = `https://sms.smsmenow.in/generateOtp.jsp?userid=srgent&key=82cacb0ba7XX&senderid=SRGETR&mobileno=${Phone}&timetoalive=600&sms=${encodeURIComponent(
+      smstemp
+    )}&tempid=1707172925498471180`;
+
+    const response = await axios.get(apiUrl);
+
+    if (response.status === 200) {
+      console.log("OTP sent response: ", response.data);
+      return res.status(200).json({ success: true, data: response.data });
+    } else {
+      return res.status(response.status).json({
+        success: false,
+        message: `Failed to send OTP. Status code: ${response.status}`,
+      });
+    }
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error while sending OTP",
+    });
+  }
+};
+
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { Phone, otp } = req.body;
+
+    const apiUrl = `https://sms.smsmenow.in/validateOtpApi.jsp?mobileno=${Phone}&otp=${otp}`;
+
+    const response = await axios.get(apiUrl);
+
+    if (response.status === 200 && response.data.result === 'success') {
+      console.log("OTP verified successfully:", response.data);
+      return res.status(200).json({
+        success: true,
+        message: "OTP verified successfully!",
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: response.data || "Failed to verify OTP. Please try again.",
+    });
+
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error while verifying OTP",
+    });
+  }
+};
+
+
+// exports.retailerLogin = async (req, res) => {
+//   try {
+//     const { Phone, Password } = req.body;
+
+//     const admin = await Users.findOne({ where: { Phone, IsActive: true } });
+
+//     if (!admin) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" });
+//     }
+
+//     const RoleId = admin.RoleId;
+//     const role = await db.Roles.findOne({ where: { RoleId: RoleId } });
+
+//     if (role.Name == "Admin") {
+//       const isPasswordValid = await bcrypt.compare(Password, admin.Password);
+
+//       if (!isPasswordValid) {
+//         return res
+//           .status(401)
+//           .json({ success: false, message: "Invalid password" });
+//       }
+//     }
+
+//     const token = jwt.sign(
+//       { role: role.Name, email: admin.Email, id: admin.UserId },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "3d" }
+//     );
+
+//     return res.status(200).json({ success: true, admin, token });
+//   } catch (error) {
+//     return res.status(500).json({ success: false, message: "Server Error" });
+//   }
+// };
+
 exports.getAllUsers = async (req, res) => {
   try {
     let {
@@ -96,8 +214,15 @@ exports.getAllUsers = async (req, res) => {
       Type,
       fromDate,
       toDate,
-      isActive
+      isActive,
+      pagination = "true",
     } = req.query;
+
+    if (pagination == "false") {
+      const role = await Role.findOne({ where: { Name: "Mason" } });
+      const mason = await Users.findAll({ where: { RoleId: role.RoleId } });
+      return res.status(200).json({ success: true, mason });
+    }
 
     page = parseInt(page) || 1;
     limit = parseInt(limit) || 10;
@@ -121,16 +246,16 @@ exports.getAllUsers = async (req, res) => {
         },
       ],
     };
-    if(Type){
+    if (Type) {
       const roles = await Role.findOne({
         where: {
-          Name:Type
+          Name: Type,
         },
       });
       where.RoleId = roles.RoleId;
     }
 
-    if(isActive){
+    if (isActive) {
       where.IsActive = isActive;
     }
 
@@ -140,7 +265,10 @@ exports.getAllUsers = async (req, res) => {
 
     if (fromDate && toDate) {
       where.createdAt = {
-        [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(23, 59, 59, 999))],
+        [Op.between]: [
+          new Date(fromDate),
+          new Date(new Date(toDate).setHours(23, 59, 59, 999)),
+        ],
       };
     }
 
@@ -151,7 +279,7 @@ exports.getAllUsers = async (req, res) => {
       offset,
       RoleId,
       attributes: {
-        exclude: ['Password'], 
+        exclude: ["Password"],
       },
       include: [
         {
@@ -162,50 +290,103 @@ exports.getAllUsers = async (req, res) => {
       ],
     });
 
- let usersWithMasonCount;
- if(Type=="Retailer"){
-  const roles = await Role.findOne({
-    where: {
-      Name:"Mason"
-    },
-  });
-  const userIds = users.rows.map(user => user.UserId);
-  const masonCountData = await Users.findAll({
-    attributes: ['CreatedBy', [db.Sequelize.fn('COUNT', db.Sequelize.col('UserId')), 'masonCount']],
-    where: {
-      RoleId: { 
-        [Op.eq]: roles.RoleId
+    let usersWithMasonCount;
+    if (Type == "Retailer") {
+      const roles = await Role.findOne({
+        where: {
+          Name: "Mason",
+        },
+      });
+      const userIds = users.rows.map((user) => user.UserId);
+      const masonCountData = await Users.findAll({
+        attributes: [
+          "CreatedBy",
+          [db.Sequelize.fn("COUNT", db.Sequelize.col("UserId")), "masonCount"],
+        ],
+        where: {
+          RoleId: {
+            [Op.eq]: roles.RoleId,
+          },
+          CreatedBy: {
+            [Op.in]: userIds,
+          },
+        },
+        group: ["CreatedBy"],
+      });
+
+      const masonCountMap = masonCountData.reduce((acc, item) => {
+        acc[item.CreatedBy] = item.getDataValue("masonCount");
+        return acc;
+      }, {});
+      usersWithMasonCount = users.rows.map((user) => {
+        const userJson = user.toJSON();
+        userJson.masonCount = masonCountMap[user.UserId] || 0;
+        return userJson;
+      });
+    }
+
+    const userIds = users.rows.map((user) => user.UserId);
+
+    const masonRedeemData = await Coupon.findAll({
+      attributes: [
+        "RedeemTo",
+        [
+          db.Sequelize.fn("SUM", db.Sequelize.col("Amount")),
+          "totalRedeemAmount",
+        ],
+      ],
+      where: {
+        RedeemTo: {
+          [Op.in]: userIds,
+        },
       },
-      CreatedBy: {
-        [Op.in]: userIds
-      }
-    },
-    group: ['CreatedBy']
-  });
- 
-  const masonCountMap = masonCountData.reduce((acc, item) => {
-    acc[item.CreatedBy] = item.getDataValue('masonCount');
-    return acc;
-  }, {});
-   usersWithMasonCount = users.rows.map(user => {
-   const userJson = user.toJSON();
-   userJson.masonCount = masonCountMap[user.UserId] || 0;
-   return userJson;
- });
- }
-  
+      group: ["RedeemTo"],
+    });
+
+    const redeemAmountMap = masonRedeemData.reduce((acc, item) => {
+      acc[item.RedeemTo] = item.getDataValue("totalRedeemAmount");
+      return acc;
+    }, {});
+
+    const masonTotalRewardPoints = await MasonSo.findAll({
+      attributes: [
+        "MasonId",
+        [
+          db.Sequelize.fn("SUM", db.Sequelize.col("TotalRewardPoint")),
+          "totalRewardPoints",
+        ],
+      ],
+      where: {
+        MasonId: {
+          [Op.in]: userIds,
+        },
+      },
+      group: ["MasonId"],
+    });
+
+    const TotalRewardPointsMap = masonTotalRewardPoints.reduce((acc, item) => {
+      acc[item.MasonId] = item.getDataValue("totalRewardPoints");
+      return acc;
+    }, {});
+
+    const redeemPoints = users.rows.map((user) => {
+      const userJson = user.toJSON();
+      userJson.redeemAmount = redeemAmountMap[user.UserId] || 0;
+      userJson.rewardPoints = TotalRewardPointsMap[user.UserId] || 0;
+      return userJson;
+    });
 
     const totalPages = Math.ceil(users.count / limit);
 
     return res.status(200).json({
       success: true,
-      users: Type=="Retailer" ? usersWithMasonCount:users.rows,
+      users: Type == "Retailer" ? usersWithMasonCount : redeemPoints,
       totalPages,
       currentPage: page,
       totalItems: users.count,
     });
   } catch (error) {
-    console.log('error',error)
+    console.log("error", error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -215,7 +396,14 @@ exports.getUserById = async (req, res) => {
     const id = req.params.id;
 
     const user = await Users.findByPk(id, {
-      attributes: ["FirstName", "LastName", "Email", "Phone", "Address", "ShopName"],
+      attributes: [
+        "FirstName",
+        "LastName",
+        "Email",
+        "Phone",
+        "Address",
+        "ShopName",
+      ],
     });
 
     if (!user) {
@@ -378,11 +566,9 @@ exports.resetPassword = async (req, res) => {
 exports.getRetailerDetailById = async (req, res) => {
   try {
     const id = req.params.id;
-    const {
-      sortBy = "createdAt",
-      sortOrder = "DESC",
-      search,
-    } = req.query;
+    const { sortBy = "createdAt", sortOrder = "DESC", search } = req.query;
+
+    const role = await Role.findOne({ where: { Name: "Mason" } });
 
     const ledgerEntries = await LedgerEntry.findAll({
       where: { RetailerUserId: id },
@@ -396,7 +582,8 @@ exports.getRetailerDetailById = async (req, res) => {
     });
 
     const masonWhereCondition = {
-      CreatedBy: id,
+      RoleId: role.RoleId,
+      IsActive: true,
       ...(search && {
         [Op.or]: [
           { FirstName: { [Op.iLike]: `%${search}%` } },
@@ -405,28 +592,50 @@ exports.getRetailerDetailById = async (req, res) => {
       }),
     };
 
-    const relatedMasons = await Users.findAndCountAll({
+    const relatedMasons = await Users.findAll({
       where: masonWhereCondition,
       include: [
+        {
+          model: MasonSo,
+          as: "MasonSoDetail",
+          attributes: [],
+        },
         {
           model: Coupon,
           as: "ScannedCoupons",
           attributes: ["CouponCode", "Amount", "RedeemDateTime"],
         },
       ],
+      attributes: {
+        include: [
+          [
+            fn("SUM", col("MasonSoDetail.TotalRewardPoint")),
+            "totalRewardPoints",
+          ],
+        ],
+      },
+      group: ["Users.UserId", "ScannedCoupons.CouponId"],
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    const response = {
-      ledgerEntries: ledgerEntries,
-      relatedMasons: relatedMasons.rows.map((mason) => ({
-        ...mason.toJSON(),
-        ScannedCoupons: mason.ScannedCoupons.map((coupon) => coupon.toJSON()),
-      })),
-      totalMasons: relatedMasons.count,
-    };
+    const response = relatedMasons.map((mason) => ({
+      UserId: mason.UserId,
+      FirstName: mason.FirstName,
+      LastName: mason.LastName,
+      Email: mason.Email,
+      Phone: mason.Phone,
+      totalRewardPoints: mason.getDataValue("totalRewardPoints") || 0,
+      ScannedCoupons: mason.ScannedCoupons,
+    }));
 
-    return res.status(200).json({ success: true, response });
+    res.status(200).json({
+      success: true,
+      response: {
+        ledgerEntries: ledgerEntries,
+        relatedMasons: response,
+        totalMasons: response.length,
+      },
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: "Server Error" });
@@ -448,12 +657,12 @@ exports.getDashboardStats = async (req, res) => {
     });
     const companyCount = await Company.count({
       where: {
-        IsActive:true,
+        IsActive: true,
       },
     });
     const productCount = await Product.count({
       where: {
-        IsActive:true,
+        IsActive: true,
       },
     });
     const masonCount = await Users.count({
@@ -603,4 +812,3 @@ exports.getRetailerStats = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
-

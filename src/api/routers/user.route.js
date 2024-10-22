@@ -10,6 +10,8 @@ const router = express.Router();
 
 router.post('/addUser', validateRole(["Admin", "Retailer"]), validate(createUserSchema, "body"), userController.createUser);
 router.post('/adminLogin',validate(loginSchema, "body"), userController.adminLogin);
+router.post('/sendOtp', userController.sendOtp);
+router.post('/verifyOtp', userController.verifyOtp);
 router.post('/forgetPassword', userController.forgetPassword);
 router.post('/changePassword', userController.changePassword);
 router.post('/resetPassword/:UserId/:Token', userController.resetPassword);
