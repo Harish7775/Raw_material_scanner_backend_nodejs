@@ -14,6 +14,7 @@ const moment = require("moment");
 const crypto = require("crypto");
 const sendMail = require("../../helper/sendMail");
 const axios = require("axios");
+const { otpTemplate } = require("../../helper/smsTemplates");
 
 exports.createUser = async (req, res) => {
   try {
@@ -108,10 +109,8 @@ exports.sendOtp = async (req, res) => {
         .json({ success: false, message: "User not registered..!" });
     }
 
-    const smstemp = `Your TruBond Login OTP is {otp} SRG Enterprises https://srgenterprises.in/`;
-
     const apiUrl = `https://sms.smsmenow.in/generateOtp.jsp?userid=srgent&key=82cacb0ba7XX&senderid=SRGETR&mobileno=${Phone}&timetoalive=600&sms=${encodeURIComponent(
-      smstemp
+      otpTemplate
     )}&tempid=1707172925498471180`;
 
     const response = await axios.get(apiUrl);
@@ -142,7 +141,7 @@ exports.verifyOtp = async (req, res) => {
 
     const response = await axios.get(apiUrl);
 
-    if (response.status === 200 && response.data.result === 'success') {
+    if (response.status === 200 && response.data.result === "success") {
       console.log("OTP verified successfully:", response.data);
       return res.status(200).json({
         success: true,
@@ -154,7 +153,6 @@ exports.verifyOtp = async (req, res) => {
       success: false,
       message: response.data || "Failed to verify OTP. Please try again.",
     });
-
   } catch (error) {
     console.error("Error verifying OTP:", error);
     return res.status(500).json({
@@ -163,7 +161,6 @@ exports.verifyOtp = async (req, res) => {
     });
   }
 };
-
 
 // exports.retailerLogin = async (req, res) => {
 //   try {

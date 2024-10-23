@@ -5,12 +5,17 @@ const Users = db.Users;
 const Product = db.Product;
 const { Op } = require("sequelize");
 const sendSms = require("../../helper/sendsms");
+const { rewardPointsTemplate } = require("../../helper/smsTemplates");
 
 exports.createMasonSoDetail = async (req, res) => {
   try {
     const { products, masonId } = req.body;
 
-    const masonSo = await MasonSo.create({ MasonId: masonId });
+    const masonSo = await MasonSo.create({
+      MasonId: masonId,
+      CreatedBy: req.user.id,
+      ModifiedBy: req.user.id,
+    });
 
     const productIds = products.map((p) => p.productId);
     const productList = await Product.findAll({
@@ -30,6 +35,8 @@ exports.createMasonSoDetail = async (req, res) => {
         ProductId: product.productId,
         Quantity: product.quantity,
         RewardPoints: rewardPoints,
+        CreatedBy: req.user.id,
+        ModifiedBy: req.user.id,
       };
     });
 
@@ -41,10 +48,7 @@ exports.createMasonSoDetail = async (req, res) => {
     );
 
     const user = await Users.findByPk(masonId, {
-      attributes: [
-        "FirstName",
-        "Phone",
-      ],
+      attributes: ["FirstName", "Phone"],
     });
 
     const masonSos = await MasonSo.findAll({
@@ -68,18 +72,11 @@ exports.createMasonSoDetail = async (req, res) => {
 
     const toMason = `+91${user.Phone}`;
 
-    const messageMason = `Hi, You have now accumulated a total of ${totalRewardPoints} TruBond reward points SRG Enterprises https://srgenterprises.in/`;
+    const messageMason = rewardPointsTemplate(totalRewardPoints);
 
-    await Promise.all([
-      sendSms(toMason, messageMason),
-    ]);
-    //   if (updated === 0) {
-    //     return res.status(400).send({ success: false, message: "MasonSo update failed" });
-    //   }
+    await Promise.all([sendSms(toMason, messageMason)]);
 
-    return res
-      .status(201)
-      .send({ success: true, data: masonSoDetails });
+    return res.status(201).send({ success: true, data: masonSoDetails });
   } catch (err) {
     console.error("Error creating MasonSoDetail:", err);
     return res.status(500).send({
@@ -113,9 +110,9 @@ exports.getAllMasonSoDetails = async (req, res) => {
       where: whereConditions,
       include: [
         {
-          model: MasonSoDetail,
-          as: "details",
-          attributes: ["ProductId", "Quantity", "RewardPoints"],
+          model: Users,
+          as: "masonDetails",
+          attributes: ["FirstName", "LastName"],
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -123,21 +120,21 @@ exports.getAllMasonSoDetails = async (req, res) => {
       limit,
     });
 
-    const data = rows.map((masonSo) => {
-      const totalRewardPoints = masonSo.details.reduce(
-        (sum, detail) => sum + parseFloat(detail.RewardPoints),
-        0
-      );
-      return {
-        ...masonSo.toJSON(),
-        totalRewardPoints,
-      };
-    });
+    // const data = rows.map((masonSo) => {
+    //   const totalRewardPoints = masonSo.details.reduce(
+    //     (sum, detail) => sum + parseFloat(detail.RewardPoints),
+    //     0
+    //   );
+    //   return {
+    //     ...masonSo.toJSON(),
+    //     totalRewardPoints,
+    //   };
+    // });
 
     res.status(200).json({
       success: true,
       total: count,
-      data,
+      data: rows,
     });
   } catch (err) {
     console.error("Error fetching MasonSoDetails:", err);
@@ -155,6 +152,11 @@ exports.getMasonSoDetailById = async (req, res) => {
     const masonSo = await MasonSo.findOne({
       where: { MasonSoId: id },
       include: [
+        {
+          model: Users,
+          as: "masonDetails",
+          attributes: ["FirstName", "LastName"],
+        },
         {
           model: MasonSoDetail,
           attributes: ["ProductId", "Quantity", "RewardPoints"],

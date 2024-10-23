@@ -35,6 +35,7 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey: "MasonId",
       targetKey: "UserId",
       constraints: true,
+      as: "masonDetails",
     });
     MasonSo.belongsTo(models.Users, {
       foreignKey: "CreatedBy",
