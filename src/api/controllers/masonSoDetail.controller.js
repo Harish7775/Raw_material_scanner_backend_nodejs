@@ -76,7 +76,7 @@ exports.createMasonSoDetail = async (req, res) => {
 
     await Promise.all([sendSms(toMason, messageMason)]);
 
-    return res.status(201).send({ success: true, data: masonSoDetails });
+    return res.status(200).send({ success: true, message: "MassonSo Created Succssfully..!" });
   } catch (err) {
     console.error("Error creating MasonSoDetail:", err);
     return res.status(500).send({
@@ -96,11 +96,23 @@ exports.getAllMasonSoDetails = async (req, res) => {
       whereConditions.MasonId = masonId;
     }
 
+    if (fromDate && !toDate) {
+      whereConditions.createdAt = {
+        [Op.gte]: new Date(fromDate),
+      };
+    }
+
+    if (!fromDate && toDate) {
+      whereConditions.createdAt = {
+        [Op.lte]: new Date(new Date(toDate).setHours(29, 29, 59, 999)),
+      };
+    }
+
     if (fromDate && toDate) {
       whereConditions.createdAt = {
         [Op.between]: [
           new Date(fromDate),
-          new Date(new Date(toDate).setHours(23, 59, 59, 999)),
+          new Date(new Date(toDate).setHours(29, 29, 59, 999)),
         ],
       };
     }
@@ -200,8 +212,14 @@ exports.getTotalRewardPointsForMason = async (req, res) => {
       include: [
         {
           model: MasonSoDetail,
-          attributes: ["RewardPoints"],
+          attributes: ["ProductId", "Quantity", "RewardPoints"],
           as: "details",
+          include: [
+            {
+              model: Product,
+              attributes: ["Name"],
+            },
+          ],
         },
       ],
     });
@@ -216,6 +234,7 @@ exports.getTotalRewardPointsForMason = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      masonSos,
       totalRewardPoints,
     });
   } catch (err) {
@@ -224,38 +243,5 @@ exports.getTotalRewardPointsForMason = async (req, res) => {
       success: false,
       message: "Error fetching total reward points for Mason",
     });
-  }
-};
-
-exports.deleteMasonSo = async (req, res) => {
-  try {
-    const { masonSoId } = req.params;
-
-    // Check if the MasonSo exists
-    const masonSo = await MasonSo.findByPk(masonSoId);
-    if (!masonSo) {
-      return res
-        .status(404)
-        .send({ success: false, message: "MasonSo not found" });
-    }
-
-    await MasonSoDetail.destroy({
-      where: { MasonSoId: masonSoId },
-    });
-
-    // Delete the MasonSo itself
-    await MasonSo.destroy({
-      where: { MasonSoId: masonSoId },
-    });
-
-    return res.status(200).send({
-      success: true,
-      message: "MasonSo and related details deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting MasonSo and MasonSoDetails:", error);
-    return res
-      .status(500)
-      .send({ success: false, message: "Internal Server Error" });
   }
 };

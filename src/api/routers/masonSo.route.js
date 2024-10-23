@@ -11,8 +11,5 @@ router.post('/createMasonSoDetail', validateRole(["Admin", "Retailer"]), masonSo
 router.get('/getAllMasonSoDetails', validateRole(["Admin", "Retailer"]), masonSoController.getAllMasonSoDetails);
 router.get('/getMasonSoDetailById/:id', validateRole(["Admin", "Retailer"]), masonSoController.getMasonSoDetailById);
 router.get('/getTotalRewardPointsForMason/:masonId', validateRole(["Admin", "Retailer"]), masonSoController.getTotalRewardPointsForMason);
-router.delete('/deleteMasonSo/:masonSoId', masonSoController.deleteMasonSo);
-// router.delete('/deleteCategory/:id', validateRole(["Admin"]), validate(idSchema, 'params'), categoryController.deleteCategory);
-
 
 module.exports = router;

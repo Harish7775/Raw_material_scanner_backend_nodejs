@@ -162,43 +162,6 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-// exports.retailerLogin = async (req, res) => {
-//   try {
-//     const { Phone, Password } = req.body;
-
-//     const admin = await Users.findOne({ where: { Phone, IsActive: true } });
-
-//     if (!admin) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "User not found" });
-//     }
-
-//     const RoleId = admin.RoleId;
-//     const role = await db.Roles.findOne({ where: { RoleId: RoleId } });
-
-//     if (role.Name == "Admin") {
-//       const isPasswordValid = await bcrypt.compare(Password, admin.Password);
-
-//       if (!isPasswordValid) {
-//         return res
-//           .status(401)
-//           .json({ success: false, message: "Invalid password" });
-//       }
-//     }
-
-//     const token = jwt.sign(
-//       { role: role.Name, email: admin.Email, id: admin.UserId },
-//       process.env.JWT_SECRET,
-//       { expiresIn: "3d" }
-//     );
-
-//     return res.status(200).json({ success: true, admin, token });
-//   } catch (error) {
-//     return res.status(500).json({ success: false, message: "Server Error" });
-//   }
-// };
-
 exports.getAllUsers = async (req, res) => {
   try {
     let {
