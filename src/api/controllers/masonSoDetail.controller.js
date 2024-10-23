@@ -145,8 +145,10 @@ exports.getAllMasonSoDetails = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      total: count,
       data: rows,
+      totalItems: count,      
+      totalPages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
     });
   } catch (err) {
     console.error("Error fetching MasonSoDetails:", err);
