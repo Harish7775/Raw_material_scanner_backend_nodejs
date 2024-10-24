@@ -5,10 +5,10 @@ const Role = db.Roles;
 const Category = db.Category;
 const Company = db.Company;
 const User = db.Users;
-const RewardPoints = db.RewardPoints;
 const { Op } = require("sequelize");
 const moment = require("moment");
-// const sendSms = require("../../helper/sendsms");
+const sendSms = require("../../helper/sendsms");
+const { redeemAmountTemplate } = require("../../helper/smsTemplates");
 
 exports.createCoupon = async (req, res) => {
   try {
@@ -244,43 +244,41 @@ exports.updateCoupon = async (req, res) => {
         .json({ success: false, message: "Coupon not found" });
     }
 
-    // if (req.body.RedeemBy && req.body.RedeemTo) {
-    //   const [mason, retailer] = await Promise.all([
-    //     User.findByPk(req.body.RedeemTo),
-    //     User.findByPk(req.body.RedeemBy),
-    //   ]);
+    if (req.body.RedeemTo && req.body.RedeemBy) {
+      const [mason] = await Promise.all([
+        User.findByPk(req.body.RedeemTo),
+        // User.findByPk(req.body.RedeemBy),
+      ]);
 
-    //   const toMason = `+91${mason.Phone}`;
-    //   const toRetailer = `+91${retailer.Phone}`;
+      const toMason = `+91${mason.Phone}`;
+      // const toRetailer = `+91${retailer.Phone}`;
 
-    //   const totalRedeemedAmount = await Coupon.sum("Amount", {
-    //     where: { RedeemTo: req.body.RedeemTo },
-    //   });
+      const totalRedeemedAmount = await Coupon.sum("Amount", {
+        where: { RedeemTo: req.body.RedeemTo },
+      });
 
-    //   const redeemedAmount = coupon.Amount;
-    //   const product = await Product.findByPk(coupon.ProductId);
+      // const redeemedAmount = coupon.Amount;
+      // const product = await Product.findByPk(coupon.ProductId);
 
-    //   await RewardPoints.create({
-    //     RetailerId: req.body.RedeemBy,
-    //     ProductId: product.ProductId,
-    //     CouponId: id,
-    //     RewardPointValue: product.RewardPointValue,
-    //     CreatedBy: req.user.id,
-    //     ModifiedBy: req.user.id,
-    //   });
+      // await RewardPoints.create({
+      //   RetailerId: req.body.RedeemBy,
+      //   ProductId: product.ProductId,
+      //   CouponId: id,
+      //   RewardPointValue: product.RewardPointValue,
+      //   CreatedBy: req.user.id,
+      //   ModifiedBy: req.user.id,
+      // });
 
-    //   const totalRewardPoints = await RewardPoints.sum('RewardPointValue', {
-    //     where: { RetailerId: req.body.RedeemBy },
-    //   });
+      // const totalRewardPoints = await RewardPoints.sum('RewardPointValue', {
+      //   where: { RetailerId: req.body.RedeemBy },
+      // });
 
-    //   const messageMason = `Hi ${mason.FirstName}, Your TruBond coupon has been redeemed successfully! The total amount you have redeemed so far is ${totalRedeemedAmount} SRG Enterprises https://srgenterprises.in/`;
-    //   const messageRetailer = `Hi, You have now accumulated a total of ${totalRewardPoints} TruBond reward points SRG Enterprises https://srgenterprises.in/`;
-
-    //   await Promise.all([
-    //     sendSms(toMason, messageMason),
-    //     sendSms(toRetailer, messageRetailer),
-    //   ]);
-    // }
+      const messageMason = redeemAmountTemplate(mason.FirstName, totalRedeemedAmount);
+      await Promise.all([
+        sendSms(toMason, messageMason),
+        // sendSms(toRetailer, messageRetailer),
+      ]);
+    }
 
     return res
       .status(200)

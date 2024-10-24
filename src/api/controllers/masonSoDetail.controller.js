@@ -26,7 +26,7 @@ exports.createMasonSoDetail = async (req, res) => {
 
     const masonSoDetails = products.map((product) => {
       const prod = productList.find((p) => p.ProductId === product.productId);
-      const rewardPoints = parseFloat(prod?.RewardPointValue || 0);
+      const rewardPoints = product.quantity * parseFloat(prod?.RewardPointValue || 0);
 
       totalRewardPoint += rewardPoints;
 
