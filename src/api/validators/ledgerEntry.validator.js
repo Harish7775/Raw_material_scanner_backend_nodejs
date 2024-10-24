@@ -17,6 +17,8 @@ const updateLedgerEntrySchema = Joi.object().keys({
   TransactionDate: Joi.date().optional(),
   Unit: Joi.number().optional(),
   PersonalNote: Joi.string().optional().allow(""),
+  CategoryId: Joi.number(),
+  ProductId: Joi.number(),
 });
 
 const getRecordsSchema = Joi.object({

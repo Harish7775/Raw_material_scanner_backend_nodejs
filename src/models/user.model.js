@@ -74,6 +74,11 @@ module.exports = (sequelize, Sequelize) => {
       as: "ScannedCoupons",
       constraints: true,
     });
+    Users.hasMany(models.MasonSo, {
+      foreignKey: "MasonId",
+      as: "MasonSoDetail",
+      constraints: true,
+    });
   };
 
   return Users;
