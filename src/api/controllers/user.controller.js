@@ -726,33 +726,43 @@ exports.getRetailerStats = async (req, res) => {
       },
     };
 
-    const [billedAmount, paidAmount, scannedQRCount, scannedQRAmount] =
-      await Promise.all([
-        LedgerEntry.sum("Amount", {
-          ...ledgerQuery,
-          where: { ...ledgerQuery.where, EntryType: "Debit" },
-        }),
-        LedgerEntry.sum("Amount", {
-          ...ledgerQuery,
-          where: { ...ledgerQuery.where, EntryType: "Credit" },
-        }),
-        Coupon.count({
-          where: {
-            RedeemDateTime: {
-              [Op.between]: [startDate, endDate],
-            },
-            RedeemBy: retailerId,
+    const [
+      billedAmount,
+      paidAmount,
+      scannedQRCount,
+      scannedQRAmount,
+      totalRewardPoints,
+    ] = await Promise.all([
+      LedgerEntry.sum("Amount", {
+        ...ledgerQuery,
+        where: { ...ledgerQuery.where, EntryType: "Debit" },
+      }),
+      LedgerEntry.sum("Amount", {
+        ...ledgerQuery,
+        where: { ...ledgerQuery.where, EntryType: "Credit" },
+      }),
+      Coupon.count({
+        where: {
+          RedeemDateTime: {
+            [Op.between]: [startDate, endDate],
           },
-        }),
-        Coupon.sum("Amount", {
-          where: {
-            RedeemDateTime: {
-              [Op.between]: [startDate, endDate],
-            },
-            RedeemBy: retailerId,
+          RedeemBy: retailerId,
+        },
+      }),
+      Coupon.sum("Amount", {
+        where: {
+          RedeemDateTime: {
+            [Op.between]: [startDate, endDate],
           },
-        }),
-      ]);
+          RedeemBy: retailerId,
+        },
+      }),
+      RewardPoints.sum("RewardPointValue", {
+        where: {
+          RetailerId: retailerId,
+        },
+      }),
+    ]);
 
     const outstandingAmount = (billedAmount || 0) - (paidAmount || 0);
 
@@ -763,6 +773,7 @@ exports.getRetailerStats = async (req, res) => {
         outstandingAmount: outstandingAmount || 0,
         scannedQRAmount: scannedQRAmount || 0,
         scannedQRCount: scannedQRCount || 0,
+        totalRewardPoints: totalRewardPoints,
       },
     };
 
