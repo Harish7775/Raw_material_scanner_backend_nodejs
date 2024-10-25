@@ -731,7 +731,6 @@ exports.getRetailerStats = async (req, res) => {
       paidAmount,
       scannedQRCount,
       scannedQRAmount,
-      totalRewardPoints,
     ] = await Promise.all([
       LedgerEntry.sum("Amount", {
         ...ledgerQuery,
@@ -757,11 +756,6 @@ exports.getRetailerStats = async (req, res) => {
           RedeemBy: retailerId,
         },
       }),
-      RewardPoints.sum("RewardPointValue", {
-        where: {
-          RetailerId: retailerId,
-        },
-      }),
     ]);
 
     const outstandingAmount = (billedAmount || 0) - (paidAmount || 0);
@@ -773,7 +767,6 @@ exports.getRetailerStats = async (req, res) => {
         outstandingAmount: outstandingAmount || 0,
         scannedQRAmount: scannedQRAmount || 0,
         scannedQRCount: scannedQRCount || 0,
-        totalRewardPoints: totalRewardPoints,
       },
     };
 
