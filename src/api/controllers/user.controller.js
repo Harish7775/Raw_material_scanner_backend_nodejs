@@ -227,7 +227,7 @@ exports.getAllUsers = async (req, res) => {
       where.createdAt = {
         [Op.between]: [
           new Date(fromDate),
-          new Date(new Date(toDate).setHours(23, 59, 59, 999)),
+          new Date(new Date(toDate).setHours(29, 29, 59, 999)),
         ],
       };
     }

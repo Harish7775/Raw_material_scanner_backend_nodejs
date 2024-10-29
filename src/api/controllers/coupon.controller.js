@@ -116,13 +116,13 @@ exports.getAllCoupons = async (req, res) => {
       ...(fromDate &&
         toDate && {
           createdAt: {
-            [Op.between]: [new Date(fromDate), new Date(toDate)],
+            [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(29, 29, 59, 999))],
           },
         }),
       ...(fromExpiryDate &&
         toExpiryDate && {
           ExpiryDateTime: {
-            [Op.between]: [new Date(fromExpiryDate), new Date(toExpiryDate)],
+            [Op.between]: [new Date(fromExpiryDate), new Date(new Date(toExpiryDate).setHours(29, 29, 59, 999))],
           },
         }),
       ...(masonsCoupon.length > 0 && {
