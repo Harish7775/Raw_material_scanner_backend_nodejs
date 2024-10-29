@@ -88,13 +88,9 @@ exports.createMasonSoDetail = async (req, res) => {
 
 exports.getAllMasonSoDetails = async (req, res) => {
   try {
-    const { fromDate, toDate, masonId, page = 1, limit = 10 } = req.query;
+    const { fromDate, toDate, masonName, page = 1, limit = 10 } = req.query;
 
     const whereConditions = {};
-
-    if (masonId) {
-      whereConditions.MasonId = masonId;
-    }
 
     if (fromDate && !toDate) {
       whereConditions.createdAt = {
@@ -125,6 +121,14 @@ exports.getAllMasonSoDetails = async (req, res) => {
           model: Users,
           as: "masonDetails",
           attributes: ["FirstName", "LastName"],
+          where: masonName
+            ? {
+                [Op.or]: [
+                  { FirstName: { [Op.iLike]: `%${masonName}%` } },
+                  { LastName: { [Op.iLike]: `%${masonName}%` } },
+                ],
+              }
+            : undefined,
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -158,6 +162,7 @@ exports.getAllMasonSoDetails = async (req, res) => {
     });
   }
 };
+
 
 exports.getMasonSoDetailById = async (req, res) => {
   try {
@@ -224,6 +229,7 @@ exports.getTotalRewardPointsForMason = async (req, res) => {
           ],
         },
       ],
+      order: [["createdAt", "DESC"]],
     });
 
     const totalRewardPoints = masonSos.reduce((sum, masonSo) => {
