@@ -23,15 +23,19 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.DECIMAL,
         allowNull: false,
       },
-      RedeemTo: {
-        type: Sequelize.INTEGER,
-      },
+      // RedeemTo: {
+      //   type: Sequelize.INTEGER,
+      // },
       RedeemBy: {
         type: Sequelize.INTEGER,
       },
       RedeemDateTime: {
         type: Sequelize.DATE,
         allowNull: true,
+      },
+      Paid: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
       },
       IsActive: {
         type: Sequelize.BOOLEAN,

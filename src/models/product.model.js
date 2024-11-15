@@ -10,6 +10,7 @@ module.exports = (sequelize, Sequelize) => {
       Name: {
         type: Sequelize.STRING(100),
         allowNull: false,
+        // unique: true,
       },
       ProductCode: {
         type: Sequelize.STRING,
@@ -22,8 +23,12 @@ module.exports = (sequelize, Sequelize) => {
       CompanyId: {
         type: Sequelize.INTEGER,
       },
-      WeightInGrams: {
-        type: Sequelize.INTEGER,
+      // WeightOrLitre: {
+      //   type: Sequelize.INTEGER,
+      //   allowNull: true,
+      // },
+      WeightOrLitre: {
+        type: Sequelize.STRING(20),
         allowNull: true,
       },
       RewardPointValue: {
@@ -39,10 +44,10 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.DECIMAL,
         allowNull: true,
       },
-      VolumeInLiter: {
-        type: Sequelize.DECIMAL,
-        allowNull: true,
-      },
+      // VolumeInLiter: {
+      //   type: Sequelize.DECIMAL,
+      //   allowNull: true,
+      // },
       Price: {
         type: Sequelize.DECIMAL,
         allowNull: true,

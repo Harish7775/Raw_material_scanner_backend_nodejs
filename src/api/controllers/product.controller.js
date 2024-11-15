@@ -9,17 +9,29 @@ exports.createProduct = async (req, res) => {
     req.body.CreatedBy = req.user.id;
     req.body.ModifiedBy = req.user.id;
 
-    const product = await Product.create(req.body);
+    const [product, created] = await Product.findOrCreate({
+      where: { Name: req.body.Name },
+      defaults: req.body,
+    });
 
-    return res.status(201).json({ success: true, product });
-  } catch (error) {
-    res
-      .status(500)
-      .json({
+    if (!created) {
+      return res.status(400).json({
         success: false,
-        message:
-          error.message || "Some error occurred while creating the Product.",
+        message: "A product with this name already exists.",
       });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Product created successfully.",
+      product,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message:
+        error.message || "Some error occurred while creating the Product.",
+    });
   }
 };
 
@@ -98,7 +110,7 @@ exports.getAllProducts = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -119,7 +131,7 @@ exports.getProductById = async (req, res) => {
     }
     return res.status(200).json({ success: true, product });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -139,16 +151,20 @@ exports.updateProduct = async (req, res) => {
     }
     throw new Error("Product not found");
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 exports.deleteProduct = async (req, res) => {
   try {
     const id = req.params.id;
+    console.log(id);
 
-    const result = await Product.destroy({ where: { ProductId: id } });
-
+    const result = await Product.destroy({
+      where: { ProductId: id },
+      force: true,
+    });
+    console.log(id);
     if (result) {
       const coupon = await Coupon.destroy({ where: { ProductId: id } });
       return res
@@ -160,6 +176,6 @@ exports.deleteProduct = async (req, res) => {
         .json({ success: false, message: "Product not found" });
     }
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

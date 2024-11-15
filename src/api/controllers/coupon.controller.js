@@ -29,7 +29,7 @@ exports.createCoupon = async (req, res) => {
       .status(201)
       .json({ success: true, message: "Coupon Generated Successfully..!" });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -52,7 +52,9 @@ exports.getAllCoupons = async (req, res) => {
       toDate = "",
       fromExpiryDate = "",
       toExpiryDate = "",
-      masonsCoupon = [],
+      fromRedeemDate = "",
+      toRedeemDate = "",
+      // masonsCoupon = [],
       retailersCoupon = [],
       flag = false,
     } = req.body;
@@ -116,20 +118,35 @@ exports.getAllCoupons = async (req, res) => {
       ...(fromDate &&
         toDate && {
           createdAt: {
-            [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(29, 29, 59, 999))],
+            [Op.between]: [
+              new Date(fromDate),
+              new Date(new Date(toDate).setHours(29, 29, 59, 999)),
+            ],
           },
         }),
       ...(fromExpiryDate &&
         toExpiryDate && {
           ExpiryDateTime: {
-            [Op.between]: [new Date(fromExpiryDate), new Date(new Date(toExpiryDate).setHours(29, 29, 59, 999))],
+            [Op.between]: [
+              new Date(fromExpiryDate),
+              new Date(new Date(toExpiryDate).setHours(29, 29, 59, 999)),
+            ],
           },
         }),
-      ...(masonsCoupon.length > 0 && {
-        RedeemTo: {
-          [Op.in]: masonsCoupon,
-        },
-      }),
+      ...(fromRedeemDate &&
+        toRedeemDate && {
+          RedeemDateTime: {
+            [Op.between]: [
+              new Date(fromRedeemDate),
+              new Date(new Date(toRedeemDate).setHours(29, 29, 59, 999)),
+            ],
+          },
+        }),
+      // ...(masonsCoupon.length > 0 && {
+      //   RedeemTo: {
+      //     [Op.in]: masonsCoupon,
+      //   },
+      // }),
       ...(retailersCoupon.length > 0 && {
         RedeemBy: {
           [Op.in]: retailersCoupon,
@@ -147,20 +164,20 @@ exports.getAllCoupons = async (req, res) => {
             {
               model: Category,
               //as: 'category',
-              attributes: ["Name"], // Specify the attributes you need from Category
+              attributes: ["Name"],
             },
             {
               model: Company,
               //as: 'company',
-              attributes: ["Name"], // Specify the attributes you need from Company
+              attributes: ["Name"],
             },
           ],
         },
-        {
-          model: User,
-          as: "RedeemToUser",
-          attributes: ["FirstName", "LastName"],
-        },
+        // {
+        //   model: User,
+        //   as: "RedeemToUser",
+        //   attributes: ["FirstName", "LastName"],
+        // },
         {
           model: User,
           as: "RedeemByUser",
@@ -181,7 +198,7 @@ exports.getAllCoupons = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -201,7 +218,7 @@ exports.getCouponById = async (req, res) => {
 
     return res.status(200).json({ success: true, coupon });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -244,48 +261,53 @@ exports.updateCoupon = async (req, res) => {
         .json({ success: false, message: "Coupon not found" });
     }
 
-    if (req.body.RedeemTo && req.body.RedeemBy) {
-      const [mason] = await Promise.all([
-        User.findByPk(req.body.RedeemTo),
-        // User.findByPk(req.body.RedeemBy),
-      ]);
+    // if (req.body.RedeemTo && req.body.RedeemBy) {
+    //   const [mason] = await Promise.all([
+    //     User.findByPk(req.body.RedeemTo),
+    //     // User.findByPk(req.body.RedeemBy),
+    //   ]);
 
-      const toMason = `+91${mason.Phone}`;
-      // const toRetailer = `+91${retailer.Phone}`;
+    //   const toMason = `+91${mason.Phone}`;
+    //   // const toRetailer = `+91${retailer.Phone}`;
 
-      const totalRedeemedAmount = await Coupon.sum("Amount", {
-        where: { RedeemTo: req.body.RedeemTo },
-      });
+    //   const totalRedeemedAmount = await Coupon.sum("Amount", {
+    //     where: { RedeemTo: req.body.RedeemTo },
+    //   });
 
-      // const redeemedAmount = coupon.Amount;
-      // const product = await Product.findByPk(coupon.ProductId);
+    //   // const redeemedAmount = coupon.Amount;
+    //   // const product = await Product.findByPk(coupon.ProductId);
 
-      // await RewardPoints.create({
-      //   RetailerId: req.body.RedeemBy,
-      //   ProductId: product.ProductId,
-      //   CouponId: id,
-      //   RewardPointValue: product.RewardPointValue,
-      //   CreatedBy: req.user.id,
-      //   ModifiedBy: req.user.id,
-      // });
+    //   // await RewardPoints.create({
+    //   //   RetailerId: req.body.RedeemBy,
+    //   //   ProductId: product.ProductId,
+    //   //   CouponId: id,
+    //   //   RewardPointValue: product.RewardPointValue,
+    //   //   CreatedBy: req.user.id,
+    //   //   ModifiedBy: req.user.id,
+    //   // });
 
-      // const totalRewardPoints = await RewardPoints.sum('RewardPointValue', {
-      //   where: { RetailerId: req.body.RedeemBy },
-      // });
+    //   // const totalRewardPoints = await RewardPoints.sum('RewardPointValue', {
+    //   //   where: { RetailerId: req.body.RedeemBy },
+    //   // });
 
-      const messageMason = redeemAmountTemplate(mason.FirstName, totalRedeemedAmount);
-      await Promise.all([
-        sendSms(toMason, messageMason),
-        // sendSms(toRetailer, messageRetailer),
-      ]);
-    }
+    //   const messageMason = redeemAmountTemplate(
+    //     mason.FirstName,
+    //     totalRedeemedAmount
+    //   );
+    //   await Promise.all([
+    //     sendSms(toMason, messageMason),
+    //     // sendSms(toRetailer, messageRetailer),
+    //   ]);
+    // }
 
     return res
       .status(200)
       .json({ success: true, message: "Coupon updated successfully!" });
   } catch (error) {
     //console.log(error);
-    return res.status(500).json({ success: false, message: "Server Error", error: error });
+    return res
+      .status(500)
+      .json({ success: false, message: error.message, error: error });
   }
 };
 
@@ -305,7 +327,7 @@ exports.deleteCoupon = async (req, res) => {
       .status(200)
       .json({ success: true, message: "Coupon deleted successfully" });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -331,7 +353,7 @@ exports.getCoupons = async (req, res) => {
 
     return res.status(200).json({ success: true, result });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -378,7 +400,7 @@ exports.getCouponByRole = async (req, res) => {
 
     return res.status(200).json({ success: true, coupons });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -390,7 +412,7 @@ exports.getQrCodeHistory = async (req, res) => {
       toDate,
       fromAmount,
       toAmount,
-      masonid,
+      // masonid,
       amount,
       sortBy = "RedeemDateTime",
       sortOrder = "DESC",
@@ -424,17 +446,17 @@ exports.getQrCodeHistory = async (req, res) => {
       };
     }
 
-    if (masonid) {
-      whereCondition.RedeemTo = masonid;
-    }
+    // if (masonid) {
+    //   whereCondition.RedeemTo = masonid;
+    // }
 
     const includeCondition = [
-      {
-        model: User,
-        as: "RedeemToUser",
-        attributes: ["FirstName", "LastName", "Phone"],
-        where: {},
-      },
+      // {
+      //   model: User,
+      //   as: "RedeemToUser",
+      //   attributes: ["FirstName", "LastName", "Phone"],
+      //   where: {},
+      // },
       {
         model: Product,
         attributes: ["Name", "Price", "WeightInGrams"],
@@ -452,7 +474,7 @@ exports.getQrCodeHistory = async (req, res) => {
       attributes: [
         "Amount",
         "RedeemDateTime",
-        "RedeemTo",
+        // "RedeemTo",
         "CouponCode",
         "CouponId",
       ],
@@ -474,11 +496,11 @@ exports.getQrCodeHistory = async (req, res) => {
       RedeemDateTime: coupon.RedeemDateTime,
       couponCode: coupon.CouponCode,
       CouponId: coupon.CouponId,
-      Mason_Name: {
-        name: coupon.RedeemToUser.FirstName,
-        lastname: coupon.RedeemToUser.LastName,
-        phone: coupon.RedeemToUser.Phone,
-      },
+      // Mason_Name: {
+      //   name: coupon.RedeemToUser.FirstName,
+      //   lastname: coupon.RedeemToUser.LastName,
+      //   phone: coupon.RedeemToUser.Phone,
+      // },
       Product_Name: {
         name: coupon.Product.Name,
         price: coupon.Product.Price,
@@ -495,7 +517,7 @@ exports.getQrCodeHistory = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -521,6 +543,6 @@ exports.getCouponByCouponCode = async (req, res) => {
 
     return res.status(200).json({ success: true, coupon });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

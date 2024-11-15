@@ -9,6 +9,7 @@ const LedgerEntry = db.LedgerEntry;
 const Role = db.Roles;
 const Token = db.Token;
 const MasonSo = db.MasonSo;
+const MasonSoDetail = db.MasonSoDetail;
 const { Op, fn, col, literal } = require("sequelize");
 const moment = require("moment");
 const crypto = require("crypto");
@@ -44,9 +45,29 @@ exports.createUser = async (req, res) => {
     const data = await Users.create(user);
     return res.status(200).send({ success: true, data });
   } catch (err) {
+    console.error("Error creating user:", err);
+    if (err.name === "SequelizeUniqueConstraintError") {
+      const errors = err.errors.map((error) => error.message);
+      if (err.errors[0].path === "Phone") {
+        return res.status(400).send({
+          success: false,
+          message:
+            "Phone number already exists. Please use a different phone number.",
+          errors,
+        });
+      }
+    } else if (err.name === "SequelizeValidationError") {
+      const errors = err.errors.map((error) => error.message);
+      return res.status(400).send({
+        success: false,
+        message: "Validation error",
+        errors,
+      });
+    }
+
     return res.status(500).send({
       success: false,
-      message: err.message || "Some error occurred while creating the User.",
+      message: "An unexpected error occurred while creating the user.",
     });
   }
 };
@@ -84,7 +105,7 @@ exports.adminLogin = async (req, res) => {
 
     return res.status(200).json({ success: true, admin, token });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -287,26 +308,26 @@ exports.getAllUsers = async (req, res) => {
 
     const userIds = users.rows.map((user) => user.UserId);
 
-    const masonRedeemData = await Coupon.findAll({
-      attributes: [
-        "RedeemTo",
-        [
-          db.Sequelize.fn("SUM", db.Sequelize.col("Amount")),
-          "totalRedeemAmount",
-        ],
-      ],
-      where: {
-        RedeemTo: {
-          [Op.in]: userIds,
-        },
-      },
-      group: ["RedeemTo"],
-    });
+    // const masonRedeemData = await Coupon.findAll({
+    //   attributes: [
+    //     "RedeemTo",
+    //     [
+    //       db.Sequelize.fn("SUM", db.Sequelize.col("Amount")),
+    //       "totalRedeemAmount",
+    //     ],
+    //   ],
+    //   where: {
+    //     RedeemTo: {
+    //       [Op.in]: userIds,
+    //     },
+    //   },
+    //   group: ["RedeemTo"],
+    // });
 
-    const redeemAmountMap = masonRedeemData.reduce((acc, item) => {
-      acc[item.RedeemTo] = item.getDataValue("totalRedeemAmount");
-      return acc;
-    }, {});
+    // const redeemAmountMap = masonRedeemData.reduce((acc, item) => {
+    //   acc[item.RedeemTo] = item.getDataValue("totalRedeemAmount");
+    //   return acc;
+    // }, {});
 
     const masonTotalRewardPoints = await MasonSo.findAll({
       attributes: [
@@ -331,7 +352,7 @@ exports.getAllUsers = async (req, res) => {
 
     const redeemPoints = users.rows.map((user) => {
       const userJson = user.toJSON();
-      userJson.redeemAmount = redeemAmountMap[user.UserId] || 0;
+      // userJson.redeemAmount = redeemAmountMap[user.UserId] || 0;
       userJson.rewardPoints = TotalRewardPointsMap[user.UserId] || 0;
       return userJson;
     });
@@ -347,7 +368,7 @@ exports.getAllUsers = async (req, res) => {
     });
   } catch (error) {
     console.log("error", error);
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -396,7 +417,7 @@ exports.getUserById = async (req, res) => {
 
     return res.status(200).json({ success: true, response });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -412,7 +433,7 @@ exports.updateUser = async (req, res) => {
     await user.update(req.body);
     return res.status(200).json({ success: true, user });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -437,7 +458,7 @@ exports.deleteUser = async (req, res) => {
       .status(200)
       .json({ success: true, message: "User deleted successfully" });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -479,7 +500,7 @@ exports.forgetPassword = async (req, res) => {
       message: msg,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -521,7 +542,7 @@ exports.resetPassword = async (req, res) => {
       .status(200)
       .json({ success: true, message: "Password reset successfully" });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -563,11 +584,11 @@ exports.getRetailerDetailById = async (req, res) => {
           as: "MasonSoDetail",
           attributes: [],
         },
-        {
-          model: Coupon,
-          as: "ScannedCoupons",
-          attributes: ["CouponCode", "Amount", "RedeemDateTime"],
-        },
+        // {
+        //   model: Coupon,
+        //   as: "ScannedCoupons",
+        //   attributes: ["CouponCode", "Amount", "RedeemDateTime"],
+        // },
       ],
       attributes: {
         include: [
@@ -577,7 +598,7 @@ exports.getRetailerDetailById = async (req, res) => {
           ],
         ],
       },
-      group: ["Users.UserId", "ScannedCoupons.CouponId"],
+      group: ["Users.UserId"],
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
@@ -588,19 +609,19 @@ exports.getRetailerDetailById = async (req, res) => {
       Email: mason.Email,
       Phone: mason.Phone,
       totalRewardPoints: mason.getDataValue("totalRewardPoints") || 0,
-      ScannedCoupons: mason.ScannedCoupons,
+      // ScannedCoupons: mason.ScannedCoupons,
     }));
 
     const relatedMasons2 = await Users.findAll({
       where: { RoleId: role.RoleId, CreatedBy: id, IsActive: true },
-      include: [
-        {
-          model: Coupon,
-          as: "ScannedCoupons",
-          attributes: ["CouponCode", "Amount", "RedeemDateTime"],
-        },
-      ],
-      group: ["Users.UserId", "ScannedCoupons.CouponId"],
+      // include: [
+      //   {
+      //     model: Coupon,
+      //     as: "ScannedCoupons",
+      //     attributes: ["CouponCode", "Amount", "RedeemDateTime"],
+      //   },
+      // ],
+      group: ["Users.UserId"],
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
@@ -610,7 +631,7 @@ exports.getRetailerDetailById = async (req, res) => {
       LastName: mason.LastName,
       Email: mason.Email,
       Phone: mason.Phone,
-      ScannedCoupons: mason.ScannedCoupons,
+      // ScannedCoupons: mason.ScannedCoupons,
     }));
 
     res.status(200).json({
@@ -626,8 +647,8 @@ exports.getRetailerDetailById = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: "Server Error" });
+    console.error(error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -665,7 +686,7 @@ exports.getDashboardStats = async (req, res) => {
         RedeemDateTime: {
           [Op.between]: [startDate, endDate],
         },
-        RedeemTo: {
+        RedeemBy: {
           [Op.not]: null,
         },
       },
@@ -676,7 +697,7 @@ exports.getDashboardStats = async (req, res) => {
         RedeemDateTime: {
           [Op.between]: [startDate, endDate],
         },
-        RedeemTo: {
+        RedeemBy: {
           [Op.not]: null,
         },
       },
@@ -697,7 +718,7 @@ exports.getDashboardStats = async (req, res) => {
     return res.status(200).json(response);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -736,7 +757,7 @@ exports.changePassword = async (req, res) => {
       .json({ success: true, message: "Password reset successfully" });
   } catch (error) {
     console.error("Error changing password:", error);
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -755,33 +776,46 @@ exports.getRetailerStats = async (req, res) => {
       },
     };
 
-    const [billedAmount, paidAmount, scannedQRCount, scannedQRAmount] =
-      await Promise.all([
-        LedgerEntry.sum("Amount", {
-          ...ledgerQuery,
-          where: { ...ledgerQuery.where, EntryType: "Debit" },
-        }),
-        LedgerEntry.sum("Amount", {
-          ...ledgerQuery,
-          where: { ...ledgerQuery.where, EntryType: "Credit" },
-        }),
-        Coupon.count({
-          where: {
-            RedeemDateTime: {
-              [Op.between]: [startDate, endDate],
-            },
-            RedeemBy: retailerId,
+    const [
+      billedAmount,
+      paidAmount,
+      scannedQRCount,
+      totalSales,
+      scannedQRAmount,
+    ] = await Promise.all([
+      LedgerEntry.sum("Amount", {
+        ...ledgerQuery,
+        where: { ...ledgerQuery.where, EntryType: "Debit" },
+      }),
+      LedgerEntry.sum("Amount", {
+        ...ledgerQuery,
+        where: { ...ledgerQuery.where, EntryType: "Credit" },
+      }),
+      Coupon.count({
+        where: {
+          RedeemDateTime: {
+            [Op.between]: [startDate, endDate],
           },
-        }),
-        Coupon.sum("Amount", {
-          where: {
-            RedeemDateTime: {
-              [Op.between]: [startDate, endDate],
-            },
-            RedeemBy: retailerId,
+          RedeemBy: retailerId,
+        },
+      }),
+      MasonSoDetail.sum("Quantity", {
+        where: {
+          createdAt: {
+            [Op.between]: [startDate, endDate],
           },
-        }),
-      ]);
+          CreatedBy: retailerId,
+        },
+      }),
+      Coupon.sum("Amount", {
+        where: {
+          RedeemDateTime: {
+            [Op.between]: [startDate, endDate],
+          },
+          RedeemBy: retailerId,
+        },
+      }),
+    ]);
 
     const outstandingAmount = (billedAmount || 0) - (paidAmount || 0);
 
@@ -792,12 +826,13 @@ exports.getRetailerStats = async (req, res) => {
         outstandingAmount: outstandingAmount || 0,
         scannedQRAmount: scannedQRAmount || 0,
         scannedQRCount: scannedQRCount || 0,
+        totalSales: totalSales || 0,
       },
     };
 
     return res.status(200).json(response);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

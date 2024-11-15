@@ -63,7 +63,7 @@ exports.getAllCompanies = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -80,7 +80,7 @@ exports.getCompanyById = async (req, res) => {
     }
     return res.status(200).json({ success: true, company });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -101,7 +101,7 @@ exports.updateCompany = async (req, res) => {
     }
     throw new Error("Company not found");
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -112,7 +112,7 @@ exports.deleteCompany = async (req, res) => {
     const result = await Company.destroy({ where: { CompanyId: id } });
 
     if (result) {
-      const product = await Product.destroy({ where: { CompanyId: id } });
+      await Product.destroy({ where: { CompanyId: id } });
       return res
         .status(200)
         .json({ success: true, message: "Company deleted successfully" });
@@ -122,6 +122,6 @@ exports.deleteCompany = async (req, res) => {
         .json({ success: false, message: "Company not found" });
     }
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
