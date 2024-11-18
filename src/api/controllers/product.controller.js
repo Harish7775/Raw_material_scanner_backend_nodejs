@@ -8,6 +8,7 @@ exports.createProduct = async (req, res) => {
   try {
     req.body.CreatedBy = req.user.id;
     req.body.ModifiedBy = req.user.id;
+    req.body.Name = req.body.Name.trim();
 
     const existingProduct = await Product.findOne({
       where: { Name: { [db.Sequelize.Op.iLike]: req.body.Name } },
