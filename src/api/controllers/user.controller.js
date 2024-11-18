@@ -549,7 +549,15 @@ exports.resetPassword = async (req, res) => {
 exports.getRetailerDetailById = async (req, res) => {
   try {
     const id = req.params.id;
-    const { sortBy = "createdAt", sortOrder = "DESC", search } = req.query;
+    const {
+      sortBy = "createdAt",
+      sortOrder = "DESC",
+      search,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const offset = (page - 1) * limit;
 
     const role = await Role.findOne({ where: { Name: "Mason" } });
 
@@ -612,7 +620,7 @@ exports.getRetailerDetailById = async (req, res) => {
       // ScannedCoupons: mason.ScannedCoupons,
     }));
 
-    const relatedMasons2 = await Users.findAll({
+    const { count, rows } = await Users.findAndCountAll({
       where: { RoleId: role.RoleId, CreatedBy: id, IsActive: true },
       // include: [
       //   {
@@ -621,11 +629,13 @@ exports.getRetailerDetailById = async (req, res) => {
       //     attributes: ["CouponCode", "Amount", "RedeemDateTime"],
       //   },
       // ],
-      group: ["Users.UserId"],
+      limit: parseInt(limit, 10),
+      offset: parseInt(offset, 10),
+      // group: ["Users.UserId"],
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    const response2 = relatedMasons2.map((mason) => ({
+    const response2 = rows.map((mason) => ({
       UserId: mason.UserId,
       FirstName: mason.FirstName,
       LastName: mason.LastName,
@@ -637,14 +647,18 @@ exports.getRetailerDetailById = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      // for app
       response: {
         ledgerEntries: ledgerEntries,
         relatedMasons: response,
         totalMasons: response.length,
       },
+      // for admin
       response2: {
         relatedMasons: response2,
-        totalMasons: response2.length,
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / limit),
+        totalItems: count,
       },
     });
   } catch (error) {
