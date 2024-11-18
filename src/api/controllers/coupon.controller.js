@@ -239,6 +239,14 @@ exports.updateCoupon = async (req, res) => {
     }
 
     if (coupon.RedeemBy !== null) {
+      if (req.body.Paid === true || req.body.Paid === false) {
+        const [updated] = await Coupon.update(req.body, { where: { CouponId: id } });
+        if (updated) {
+          return res
+            .status(200)
+            .json({ success: true, message: "Paid status updated successfully!" });
+        }
+      }
       return res
         .status(400)
         .json({ success: false, message: "Coupon has already been redeemed" });
@@ -459,7 +467,7 @@ exports.getQrCodeHistory = async (req, res) => {
       // },
       {
         model: Product,
-        attributes: ["Name", "Price", "WeightInGrams"],
+        attributes: ["Name", "Price", "WeightOrLitre"],
         include: [
           {
             model: Company,
@@ -504,7 +512,7 @@ exports.getQrCodeHistory = async (req, res) => {
       Product_Name: {
         name: coupon.Product.Name,
         price: coupon.Product.Price,
-        weight: coupon.Product.WeightInGrams,
+        weight: coupon.Product.WeightOrLitre,
         companyName: coupon.Product.Company.Name,
       },
     }));

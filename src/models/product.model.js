@@ -9,8 +9,9 @@ module.exports = (sequelize, Sequelize) => {
       },
       Name: {
         type: Sequelize.STRING(100),
-        allowNull: false,
-        // unique: true,
+        // allowNull: false,
+        unique: true,
+        collate: "C",
       },
       ProductCode: {
         type: Sequelize.STRING,
@@ -34,7 +35,7 @@ module.exports = (sequelize, Sequelize) => {
       RewardPointValue: {
         type: Sequelize.DECIMAL,
         allowNull: false,
-        defaultValue: 0.00,
+        defaultValue: 0.0,
       },
       HeightInCm: {
         type: Sequelize.DECIMAL,

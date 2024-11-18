@@ -631,6 +631,7 @@ exports.getRetailerDetailById = async (req, res) => {
       LastName: mason.LastName,
       Email: mason.Email,
       Phone: mason.Phone,
+      IsActive: mason.IsActive,
       // ScannedCoupons: mason.ScannedCoupons,
     }));
 
