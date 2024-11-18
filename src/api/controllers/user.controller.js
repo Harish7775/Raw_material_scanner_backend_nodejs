@@ -621,7 +621,19 @@ exports.getRetailerDetailById = async (req, res) => {
     }));
 
     const { count, rows } = await Users.findAndCountAll({
-      where: { RoleId: role.RoleId, CreatedBy: id, IsActive: true },
+      where: {
+        RoleId: role.RoleId,
+        CreatedBy: id,
+        IsActive: true,
+        ...(search && {
+          [Op.or]: [
+            { FirstName: { [Op.iLike]: `%${search}%` } },
+            { LastName: { [Op.iLike]: `%${search}%` } },
+            { Email: { [Op.iLike]: `%${search}%` } },
+            { Phone: { [Op.iLike]: `%${search}%` } },
+          ],
+        }),
+      },
       // include: [
       //   {
       //     model: Coupon,
