@@ -1,8 +1,8 @@
 {
-    "username": "pulkit",
-    "password": "wIr3PoEpDn3mdvmV4Em9Vu6pvGsCTyzB",
-    "database": "paint_l0y4",
-    "host": "dpg-csbj773tq21c73a1fo2g-a.singapore-postgres.render.com",
+    "username": "trubond_user",
+    "password": "OjB4UyqH0L9R3ByAmk1oaol66TcBAG9z",
+    "database": "trubond",
+    "host": "dpg-cstmdm68ii6s73fkk7qg-a.singapore-postgres.render.com",
     "dialect": "postgres",
     "logging": false,
     "pool": {
