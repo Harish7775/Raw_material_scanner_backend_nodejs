@@ -624,7 +624,7 @@ exports.getRetailerDetailById = async (req, res) => {
       where: {
         RoleId: role.RoleId,
         CreatedBy: id,
-        IsActive: true,
+        // IsActive: true,
         ...(search && {
           [Op.or]: [
             { FirstName: { [Op.iLike]: `%${search}%` } },

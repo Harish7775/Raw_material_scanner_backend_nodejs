@@ -13,7 +13,7 @@ exports.createLedgerEntry = async (req, res) => {
       .status(201)
       .json({ success: true, message: "Ledger Entry Successfully..!" });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
