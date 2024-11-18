@@ -8,18 +8,31 @@ exports.createProduct = async (req, res) => {
   try {
     req.body.CreatedBy = req.user.id;
     req.body.ModifiedBy = req.user.id;
+    req.body.Name = req.body.Name.trim();
+
+    const existingProduct = await Product.findOne({
+      where: { Name: { [db.Sequelize.Op.iLike]: req.body.Name } },
+    });
+    
+    if (existingProduct) {
+      return res.status(400).json({ success: false, message: "Product Name already exists" });
+    }
 
     const product = await Product.create(req.body);
 
-    return res.status(201).json({ success: true, product });
+    return res.status(200).json({ success: true, product });
   } catch (error) {
-    res
-      .status(500)
-      .json({
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
         success: false,
-        message:
-          error.message || "Some error occurred while creating the Product.",
+        message: error.errors[0]?.message || "A product with this name already exists.",
       });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while creating the product.",
+    });
   }
 };
 
@@ -98,7 +111,7 @@ exports.getAllProducts = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -119,7 +132,7 @@ exports.getProductById = async (req, res) => {
     }
     return res.status(200).json({ success: true, product });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -139,16 +152,31 @@ exports.updateProduct = async (req, res) => {
     }
     throw new Error("Product not found");
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
+        success: false,
+        message: "A product with this name already exists.",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while update the product.",
+    });
+    
   }
 };
 
 exports.deleteProduct = async (req, res) => {
   try {
     const id = req.params.id;
+    console.log(id);
 
-    const result = await Product.destroy({ where: { ProductId: id } });
-
+    const result = await Product.destroy({
+      where: { ProductId: id },
+      force: true,
+    });
+    
     if (result) {
       const coupon = await Coupon.destroy({ where: { ProductId: id } });
       return res
@@ -160,6 +188,6 @@ exports.deleteProduct = async (req, res) => {
         .json({ success: false, message: "Product not found" });
     }
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

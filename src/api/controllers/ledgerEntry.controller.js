@@ -13,7 +13,7 @@ exports.createLedgerEntry = async (req, res) => {
       .status(201)
       .json({ success: true, message: "Ledger Entry Successfully..!" });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -106,7 +106,7 @@ exports.getAllLedgerEntries = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -123,7 +123,7 @@ exports.getLedgerEntryById = async (req, res) => {
 
     return res.status(200).json({ success: true, ledgerEntry });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -148,7 +148,7 @@ exports.updateLedgerEntry = async (req, res) => {
     const updatedLedgerEntry = await LedgerEntry.findByPk(id);
     return res.status(200).json({ success: true, updatedLedgerEntry });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -170,7 +170,7 @@ exports.deleteLedgerEntry = async (req, res) => {
       .status(200)
       .json({ success: true, message: "Ledger entry deleted successfully" });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -200,6 +200,6 @@ exports.getLedgerEntryByUserId = async (req, res) => {
 
     return res.status(200).json({ success: true, ledgerEntryByUser, total });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

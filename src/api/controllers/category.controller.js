@@ -64,7 +64,7 @@ exports.getAllCategories = async (req, res) => {
       currentPage: parseInt(page),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -81,7 +81,7 @@ exports.getCategoryById = async (req, res) => {
     }
     return res.status(200).json({ success: true, category });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -104,7 +104,7 @@ exports.updateCategory = async (req, res) => {
 
     throw new Error("Category not found");
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -115,7 +115,7 @@ exports.deleteCategory = async (req, res) => {
     const result = await Category.destroy({ where: { CategoryId: id } });
 
     if (result) {
-      const product = await Product.destroy({ where: { CategoryId: id } });
+      await Product.destroy({ where: { CategoryId: id } });
       return res
         .status(200)
         .json({ success: true, message: "Category deleted successfully" });
@@ -125,6 +125,6 @@ exports.deleteCategory = async (req, res) => {
         .json({ success: false, message: "Category not found" });
     }
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

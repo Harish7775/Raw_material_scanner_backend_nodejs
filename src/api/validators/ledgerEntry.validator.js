@@ -14,7 +14,7 @@ const updateLedgerEntrySchema = Joi.object().keys({
   EntryType: Joi.string().valid("Credit", "Debit"),
   Note: Joi.string().allow(""),
   Amount: Joi.number(),
-  TransactionDate: Joi.date().optional(),
+  TransactionDate: Joi.date().optional().allow(""),
   Unit: Joi.number().optional(),
   PersonalNote: Joi.string().optional().allow(""),
   CategoryId: Joi.number(),
