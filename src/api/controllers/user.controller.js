@@ -97,6 +97,12 @@ exports.adminLogin = async (req, res) => {
       }
     }
 
+    if (role.Name == "Mason") {
+      return res
+        .status(403)
+        .json({ success: false, message: "Access Denied..!" });
+    }
+
     const token = jwt.sign(
       { role: role.Name, email: admin.Email, id: admin.UserId },
       process.env.JWT_SECRET,
