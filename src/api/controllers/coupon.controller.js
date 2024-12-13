@@ -554,3 +554,54 @@ exports.getCouponByCouponCode = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.updateCouponPaidStatus = async (req, res) => {
+  try {
+    const { couponIds, Paid } = req.body;
+    const ModifiedBy = req.user.id;
+
+    const coupons = await Coupon.findAll({
+      where: {
+        CouponId: couponIds,
+      },
+    });
+
+    const nonRedeemedCoupons = coupons.filter(coupon => coupon.RedeemBy === null);
+
+    if (nonRedeemedCoupons.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Some coupons have not been redeemed.",
+        nonRedeemedCoupons: nonRedeemedCoupons.map(c => c.CouponId),
+      });
+    }
+
+    const [updated] = await Coupon.update(
+      { Paid, ModifiedBy },
+      {
+        where: {
+          CouponId: couponIds,
+        },
+      }
+    );
+
+    if (updated) {
+      return res.status(200).json({
+        success: true,
+        message: "Paid status updated successfully!",
+        updatedCount: updated,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: "Failed to update paid status.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while updating the paid status.",
+      error: error.message,
+    });
+  }
+};

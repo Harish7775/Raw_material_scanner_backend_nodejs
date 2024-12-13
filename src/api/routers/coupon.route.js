@@ -15,5 +15,6 @@ router.get('/getRedeemCoupons/:id', validate(idSchema, 'params'), couponControll
 router.get('/getCouponByRole/:name', validate(getRoleByCouponSchema, 'params'), couponController.getCouponByRole);
 router.post('/getQrCodeHistory/:id', validate(idSchema, 'params'), couponController.getQrCodeHistory);
 router.get('/getCouponByCouponCode/:couponCode', validateRole(["Admin", "Retailer"]), couponController.getCouponByCouponCode);
+router.put('/updateCouponPaidStatus', validateRole(["Admin", "Retailer"]), couponController.updateCouponPaidStatus);
 
 module.exports = router;
