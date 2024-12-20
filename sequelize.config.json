@@ -1,8 +1,8 @@
 {
-    "username": "trubond_user",
-    "password": "OjB4UyqH0L9R3ByAmk1oaol66TcBAG9z",
-    "database": "trubond",
-    "host": "dpg-cstmdm68ii6s73fkk7qg-a.singapore-postgres.render.com",
+    "username": "avnadmin",
+    "password": "AVNS_bDsvwMjQ097TR-G5JlZ",
+    "database": "defaultdb",
+    "host": "postgres-paint.i.aivencloud.com",
     "dialect": "postgres",
     "logging": false,
     "pool": {
@@ -11,7 +11,7 @@
         "acquire": 30000,
         "idle": 10000
     },
-    "port": 5432,
+    "port": 11854,
     "dialectOptions": {
         "ssl": {
             "require": true,
