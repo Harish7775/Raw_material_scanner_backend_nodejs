@@ -8,27 +8,19 @@ const Coupon = db.Coupon;
 exports.getAllCouponMasters = async (req, res) => {
   try {
     const {
-      // search = "",
       sortBy = "CouponMasterId",
       sortOrder = "DESC",
       page = 1,
       pageSize = 10,
-      // companyIds = [],
-      // categoryIds = [],
-      // productIds = [],
-      // productCode = "",
-      // productName = "",
-      // reedemed = false,
-      // unReedemed = false,
-      // fromDate = "",
-      // toDate = "",
-      // fromExpiryDate = "",
-      // toExpiryDate = "",
-      // fromRedeemDate = "",
-      // toRedeemDate = "",
-      // // masonsCoupon = [],
-      // retailersCoupon = [],
-      // flag = false,
+      companyIds = [],
+      categoryIds = [],
+      productIds = [],
+      productCode = "",
+      productName = "",
+      fromDate = "",
+      toDate = "",
+      fromExpiryDate = "",
+      toExpiryDate = "",
     } = req.body;
 
     const offset = (page - 1) * pageSize;
@@ -38,92 +30,49 @@ exports.getAllCouponMasters = async (req, res) => {
     // const endDate = moment().endOf("month").toDate();
 
     const whereCondition = {
-      //   ...(search && {
-      //     CouponCode: {
-      //       [Op.iLike]: `%${search}%`,
-      //     },
-      //   }),
-      //   ...(companyIds.length > 0 && {
-      //     "$Product.CompanyId$": {
-      //       [Op.in]: companyIds,
-      //     },
-      //   }),
-      //   ...(productIds.length > 0 && {
-      //     "$Product.ProductId$": {
-      //       [Op.in]: productIds,
-      //     },
-      //   }),
-      //   ...(categoryIds.length > 0 && {
-      //     "$Product.CategoryId$": {
-      //       [Op.in]: categoryIds,
-      //     },
-      //   }),
-      //   ...(productCode && {
-      //     "$Product.ProductCode$": {
-      //       [Op.like]: productCode,
-      //     },
-      //   }),
-      //   ...(productName && {
-      //     "$Product.Name$": {
-      //       [Op.like]: productName,
-      //     },
-      //   }),
-      //   ...(reedemed == true && {
-      //     RedeemBy: {
-      //       [Op.not]: null,
-      //     },
-      //   }),
-      //   ...(reedemed == true &&
-      //     flag == true && {
-      //       RedeemBy: {
-      //         [Op.not]: null,
-      //       },
-      //       RedeemDateTime: {
-      //         [Op.between]: [startDate, endDate],
-      //       },
-      //     }),
-      //   ...(unReedemed == true && {
-      //     RedeemBy: {
-      //       [Op.is]: null,
-      //     },
-      //   }),
-      //   ...(fromDate &&
-      //     toDate && {
-      //       createdAt: {
-      //         [Op.between]: [
-      //           new Date(fromDate),
-      //           new Date(new Date(toDate).setHours(29, 29, 59, 999)),
-      //         ],
-      //       },
-      //     }),
-      //   ...(fromExpiryDate &&
-      //     toExpiryDate && {
-      //       ExpiryDateTime: {
-      //         [Op.between]: [
-      //           new Date(fromExpiryDate),
-      //           new Date(new Date(toExpiryDate).setHours(29, 29, 59, 999)),
-      //         ],
-      //       },
-      //     }),
-      //   ...(fromRedeemDate &&
-      //     toRedeemDate && {
-      //       RedeemDateTime: {
-      //         [Op.between]: [
-      //           new Date(fromRedeemDate),
-      //           new Date(new Date(toRedeemDate).setHours(29, 29, 59, 999)),
-      //         ],
-      //       },
-      //     }),
-      //   // ...(masonsCoupon.length > 0 && {
-      //   //   RedeemTo: {
-      //   //     [Op.in]: masonsCoupon,
-      //   //   },
-      //   // }),
-      //   ...(retailersCoupon.length > 0 && {
-      //     RedeemBy: {
-      //       [Op.in]: retailersCoupon,
-      //     },
-      //   }),
+        ...(companyIds.length > 0 && {
+          "$Product.CompanyId$": {
+            [Op.in]: companyIds,
+          },
+        }),
+        ...(productIds.length > 0 && {
+          "$Product.ProductId$": {
+            [Op.in]: productIds,
+          },
+        }),
+        ...(categoryIds.length > 0 && {
+          "$Product.CategoryId$": {
+            [Op.in]: categoryIds,
+          },
+        }),
+        ...(productCode && {
+          "$Product.ProductCode$": {
+            [Op.like]: productCode,
+          },
+        }),
+        ...(productName && {
+          "$Product.Name$": {
+            [Op.like]: productName,
+          },
+        }),
+        ...(fromDate &&
+          toDate && {
+            createdAt: {
+              [Op.between]: [
+                new Date(fromDate),
+                new Date(new Date(toDate).setHours(29, 29, 59, 999)),
+              ],
+            },
+          }),
+        ...(fromExpiryDate &&
+          toExpiryDate && {
+            ExpiryDateTime: {
+              [Op.between]: [
+                new Date(fromExpiryDate),
+                new Date(new Date(toExpiryDate).setHours(29, 29, 59, 999)),
+              ],
+            },
+          }),
     };
 
     const couponMasters = await CouponMaster.findAndCountAll({
