@@ -5,6 +5,7 @@ const createCouponSchema = Joi.object().keys({
     ProductId: Joi.number().required().error(new Error("Id is inValid")),
     ExpiryDateTime: Joi.date().required().error(new Error("Expiry Date is required")),
     Amount: Joi.number().positive().required().error(new Error("Amount is required")),
+    Quantity: Joi.number().positive().required().error(new Error("Quantity is required")),
     // RedeemTo: Joi.number().optional(),
     RedeemBy: Joi.number().optional(),
     RedeemDateTime: Joi.date().optional(),

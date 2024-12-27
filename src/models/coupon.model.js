@@ -15,6 +15,9 @@ module.exports = (sequelize, Sequelize) => {
       ProductId: {
         type: Sequelize.INTEGER,
       },
+      CouponMasterId: {
+        type: Sequelize.INTEGER,
+      },
       ExpiryDateTime: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -60,6 +63,11 @@ module.exports = (sequelize, Sequelize) => {
     Coupon.belongsTo(models.Product, {
       foreignKey: "ProductId",
       targetKey: "ProductId",
+      constraints: true,
+    });
+    Coupon.belongsTo(models.CouponMaster, {
+      foreignKey: "CouponMasterId",
+      targetKey: "CouponMasterId",
       constraints: true,
     });
     Coupon.belongsTo(models.Users, {

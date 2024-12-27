@@ -5,31 +5,172 @@ const Role = db.Roles;
 const Category = db.Category;
 const Company = db.Company;
 const User = db.Users;
+const CouponMaster = db.CouponMaster;
 const { Op } = require("sequelize");
 const moment = require("moment");
+const QRCode = require("qrcode");
+const PDFDocument = require("pdfkit");
+const fs = require("fs");
+const path = require("path");
 const sendSms = require("../../helper/sendsms");
 const { redeemAmountTemplate } = require("../../helper/smsTemplates");
 
 exports.createCoupon = async (req, res) => {
   try {
-    const { quantity } = req.query;
+    // const quantity = parseInt(req.query.quantity, 10);
+
+    // if (!quantity || quantity <= 0) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Invalid quantity. Please provide a positive integer.",
+    //   });
+    // }
+
+    const couponMaster = await CouponMaster.create({
+      ProductId: req.body.ProductId,
+      ExpiryDateTime: req.body.ExpiryDateTime,
+      Amount: req.body.Amount,
+      Quantity: req.body.Quantity,
+      FileName: `coupons_${Date.now()}.pdf`,
+      CreatedBy: req.user.id,
+      ModifiedBy: req.user.id,
+    });
+
+    const couponMasterId = couponMaster.CouponMasterId;
+
     const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const charactersLength = characters.length;
     const length = 10;
-    for (let i = 1; i <= quantity; i++) {
+
+    const coupons = Array.from({ length: req.body.Quantity }, () => {
       const CouponCode = Array.from({ length }, () =>
-        characters.charAt(Math.floor(Math.random() * charactersLength))
+        characters.charAt(Math.floor(Math.random() * characters.length))
       ).join("");
-      req.body.CreatedBy = req.user.id;
-      req.body.ModifiedBy = req.user.id;
-      req.body.CouponCode = CouponCode;
-      const newCoupon = await Coupon.create(req.body);
+
+      return {
+        ...req.body,
+        CouponCode,
+        CouponMasterId: couponMasterId,
+        CreatedBy: req.user.id,
+        ModifiedBy: req.user.id,
+      };
+    });
+
+    await Coupon.bulkCreate(coupons);
+
+    const pdfPath = path.join(
+      __dirname,
+      "../../../pdf",
+      `coupons_${Date.now()}.pdf`
+    );
+    const doc = new PDFDocument({ size: "A4" });
+    const stream = fs.createWriteStream(pdfPath);
+    doc.pipe(stream);
+
+    const qrSize = 120;
+    const leftWidth = 250;
+    let y = 10;
+    let couponsPerPage = 0;
+
+    const logoPath = path.join(
+      __dirname,
+      "../../../images/trubsond-logo-png.png"
+    );
+
+    for (const coupon of coupons) {
+      const qrCodeData = await QRCode.toDataURL(coupon.CouponCode);
+
+      doc.rect(0, y + 50, doc.page.width, 250).fill("#215064");
+
+      doc.image(logoPath, 32, y, {
+        width: 150,
+        height: 50,
+      });
+
+      doc
+        .fillColor("white")
+        .fontSize(13)
+        .text("Procedure:", 40, y + 70, {
+          width: leftWidth,
+          align: "left",
+        });
+
+      doc
+        .fontSize(12)
+        .text(
+          "To redeem your coupon, contact your nearest Truebond retailer and immediately claim your coupon discount.",
+          40,
+          y + 90,
+          { width: leftWidth, align: "left" }
+        );
+
+      doc.fontSize(13).text("Terms and Conditions:", 40, y + 150, {
+        width: leftWidth,
+        align: "left",
+      });
+
+      const terms = [
+        "This offer is valid for limited products.",
+        "Redeem at authorized retailers only.",
+        "Cannot be exchanged for cash.",
+        "Valid until expiry date mentioned.",
+        "Damaged QR codes will not be accepted.",
+      ];
+
+      terms.forEach((term, index) => {
+        doc
+          .fontSize(12)
+          .text(`${index + 1}. ${term}`, 40, y + 170 + index * 15, {
+            width: leftWidth,
+            align: "left",
+          });
+      });
+
+      doc.fontSize(13).text(`Coupon Code: ${coupon.CouponCode}`, 300, y + 70, {
+        width: 240,
+        align: "center",
+      });
+
+      doc.image(qrCodeData, 400, y + 120, { width: qrSize });
+
+      doc
+        .fontSize(10)
+        .text(
+          "For any assistance, contact our helpline - [+91 79765 74376]",
+          40,
+          y + qrSize + 140,
+          { width: 400, align: "left" }
+        );
+
+      y += qrSize + 220;
+      couponsPerPage++;
+
+      if (couponsPerPage === 2) {
+        doc.addPage();
+        y = 10;
+        couponsPerPage = 0;
+      }
     }
-    return res
-      .status(201)
-      .json({ success: true, message: "Coupon Generated Successfully..!" });
+
+    doc.end();
+
+    stream.on("finish", async () => {
+      await CouponMaster.update(
+        { FileName: path.basename(pdfPath) },
+        { where: { CouponMasterId: couponMasterId } }
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Coupons and QR Codes generated successfully.",
+        pdfPath: pdfPath,
+      });
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("Error generating QR codes and PDF:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while generating coupons.",
+    });
   }
 };
 
@@ -57,6 +198,7 @@ exports.getAllCoupons = async (req, res) => {
       // masonsCoupon = [],
       retailersCoupon = [],
       flag = false,
+      couponMasterId,
     } = req.body;
 
     const offset = (page - 1) * pageSize;
@@ -85,6 +227,9 @@ exports.getAllCoupons = async (req, res) => {
         "$Product.CategoryId$": {
           [Op.in]: categoryIds,
         },
+      }),
+      ...(couponMasterId && {
+        CouponMasterId: couponMasterId,
       }),
       ...(productCode && {
         "$Product.ProductCode$": {
@@ -240,11 +385,14 @@ exports.updateCoupon = async (req, res) => {
 
     if (coupon.RedeemBy !== null) {
       if (req.body.Paid === true || req.body.Paid === false) {
-        const [updated] = await Coupon.update(req.body, { where: { CouponId: id } });
+        const [updated] = await Coupon.update(req.body, {
+          where: { CouponId: id },
+        });
         if (updated) {
-          return res
-            .status(200)
-            .json({ success: true, message: "Paid status updated successfully!" });
+          return res.status(200).json({
+            success: true,
+            message: "Paid status updated successfully!",
+          });
         }
       }
       return res
@@ -566,13 +714,15 @@ exports.updateCouponPaidStatus = async (req, res) => {
       },
     });
 
-    const nonRedeemedCoupons = coupons.filter(coupon => coupon.RedeemBy === null);
+    const nonRedeemedCoupons = coupons.filter(
+      (coupon) => coupon.RedeemBy === null
+    );
 
     if (nonRedeemedCoupons.length > 0) {
       return res.status(400).json({
         success: false,
         message: "Some coupons have not been redeemed.",
-        nonRedeemedCoupons: nonRedeemedCoupons.map(c => c.CouponId),
+        nonRedeemedCoupons: nonRedeemedCoupons.map((c) => c.CouponId),
       });
     }
 

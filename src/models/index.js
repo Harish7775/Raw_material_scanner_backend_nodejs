@@ -26,6 +26,7 @@ db.Coupon = require("./coupon.model.js")(sequelize, Sequelize);
 db.Token = require("./token.model.js")(sequelize, Sequelize);
 db.MasonSoDetail = require("./masonSoDetail.model.js")(sequelize, Sequelize);
 db.MasonSo = require("./masonSo.model.js")(sequelize, Sequelize);
+db.CouponMaster = require("./couponMaster.model.js")(sequelize, Sequelize);
 
 Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {
