@@ -124,8 +124,8 @@ exports.getAllMasonSoDetails = async (req, res) => {
           where: masonName
             ? {
                 [Op.or]: [
-                  { FirstName: { [Op.iLike]: `%${masonName}%` } },
-                  { LastName: { [Op.iLike]: `%${masonName}%` } },
+                  { FirstName: { [Op.like]: `%${masonName}%` } },
+                  { LastName: { [Op.like]: `%${masonName}%` } },
                 ],
               }
             : undefined,

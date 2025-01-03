@@ -39,7 +39,7 @@ exports.createCoupon = async (req, res) => {
     const couponMasterId = couponMaster.CouponMasterId;
 
     const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const length = 10;
+    const length = 20;
 
     const coupons = Array.from({ length: req.body.Quantity }, () => {
       const CouponCode = Array.from({ length }, () =>
@@ -210,7 +210,7 @@ exports.getAllCoupons = async (req, res) => {
     const whereCondition = {
       ...(search && {
         CouponCode: {
-          [Op.iLike]: `%${search}%`,
+          [Op.like]: `%${search}%`,
         },
       }),
       ...(companyIds.length > 0 && {

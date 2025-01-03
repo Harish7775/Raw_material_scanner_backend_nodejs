@@ -4,11 +4,9 @@ const config = require('../../sequelize.config.json');
 const sequelize = new Sequelize(config.database, config.username, config.password, {
   host: config.host,
   dialect: config.dialect,
-  dialectModule: require('pg'),
   logging: config.logging,
   pool: config.pool,
-  port: config.port,
-  dialectOptions: config.dialectOptions 
+  port: config.port, 
 });
 
 const db = {};

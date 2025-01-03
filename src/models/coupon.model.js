@@ -8,7 +8,7 @@ module.exports = (sequelize, Sequelize) => {
         autoIncrement: true,
       },
       CouponCode: {
-        type: Sequelize.STRING(10),
+        type: Sequelize.STRING(20),
         allowNull: false,
         unique: true,
       },

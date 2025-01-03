@@ -63,7 +63,7 @@ exports.getAllLedgerEntries = async (req, res) => {
     if (search) {
       includeCondition[0].where = {
         [Op.or]: [
-          { FirstName: { [Op.iLike]: `%${search}%` } },
+          { FirstName: { [Op.like]: `%${search}%` } },
         ],
       };
     }

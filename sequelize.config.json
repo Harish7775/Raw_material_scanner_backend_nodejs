@@ -1,23 +1,18 @@
 {
-    "username": "avnadmin",
-    "password": "AVNS_bDsvwMjQ097TR-G5JlZ",
-    "database": "defaultdb",
-    "host": "postgres-paint.i.aivencloud.com",
-    "dialect": "postgres",
+    "username": "a98c7e_admin",
+    "password": "Paint@Admin@159",
+    "database": "db_a98c7e_paint",
+    "host": "mysql5035.site4now.net",
+    "dialect": "mysql",
     "logging": false,
     "pool": {
-        "max": 10,
-        "min": 0,
+        "max": 20,
+        "min": 1,
         "acquire": 30000,
-        "idle": 10000
+        "idle": 10000,
+        "evict": 5000
     },
-    "port": 11854,
-    "dialectOptions": {
-        "ssl": {
-            "require": true,
-            "rejectUnauthorized": false
-        }
-    },
+    "port": 3306,
     "seederStorage": "sequelize",
     "seederStorageTableName": "SequelizeData"
 }
