@@ -11,10 +11,11 @@ exports.createProduct = async (req, res) => {
     const inputName = req.body.Name.trim();
 
     const existingProduct = await Product.findOne({
-      where: db.Sequelize.where(
-        db.Sequelize.fn("TRIM", db.Sequelize.col("Name")),
-        inputName
-      ),
+      where: {
+        Name: {
+          [db.Sequelize.Op.like]: `%${inputName}%`,
+        },
+      },
     });
 
     if (existingProduct) {

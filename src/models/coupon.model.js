@@ -10,7 +10,7 @@ module.exports = (sequelize, Sequelize) => {
       CouponCode: {
         type: Sequelize.STRING(20),
         allowNull: false,
-        unique: true,
+        // unique: true,
       },
       ProductId: {
         type: Sequelize.INTEGER,
@@ -56,6 +56,12 @@ module.exports = (sequelize, Sequelize) => {
     {
       timestamps: true,
       paranoid: true,
+      indexes: [
+        {
+          unique: true,
+          fields: ["CouponCode"],
+        },
+      ],
     }
   );
 

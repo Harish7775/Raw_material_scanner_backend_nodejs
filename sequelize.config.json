@@ -4,13 +4,12 @@
     "database": "db_a98c7e_paint",
     "host": "mysql5035.site4now.net",
     "dialect": "mysql",
-    "logging": false,
+    "logging": true,
     "pool": {
-        "max": 20,
-        "min": 1,
+        "max": 8,
+        "min": 0,
         "acquire": 30000,
-        "idle": 10000,
-        "evict": 5000
+        "idle": 10000
     },
     "port": 3306,
     "seederStorage": "sequelize",

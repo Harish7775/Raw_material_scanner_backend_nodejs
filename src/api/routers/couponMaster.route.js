@@ -10,6 +10,6 @@ router.post('/getAllCouponMasters', validateRole(["Admin"]), couponMasterControl
 router.get('/getCouponMasterById/:id', validateRole(["Admin"]), validate(idSchema, 'params'), couponMasterController.getCouponMasterById);
 router.put('/updateCouponMaster/:id', validateRole(["Admin"]), validate(updateCouponMasterSchema, 'body'), couponMasterController.updateCouponMaster);
 // router.delete('/deleteCoupon/:id', validateRole(["Admin"]), validate(idSchema, 'params'), couponController.deleteCoupon);
-
+router.delete('/removeFileFromCouponMaster/:id', validateRole(["Admin"]), validate(idSchema, 'params'), couponMasterController.removeFileFromCouponMaster);
 
 module.exports = router;

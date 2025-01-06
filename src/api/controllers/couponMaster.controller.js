@@ -4,6 +4,9 @@ const Category = db.Category;
 const Company = db.Company;
 const CouponMaster = db.CouponMaster;
 const Coupon = db.Coupon;
+const { Op } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
 
 exports.getAllCouponMasters = async (req, res) => {
   try {
@@ -30,49 +33,49 @@ exports.getAllCouponMasters = async (req, res) => {
     // const endDate = moment().endOf("month").toDate();
 
     const whereCondition = {
-        ...(companyIds.length > 0 && {
-          "$Product.CompanyId$": {
-            [Op.in]: companyIds,
+      ...(companyIds.length > 0 && {
+        "$Product.CompanyId$": {
+          [Op.in]: companyIds,
+        },
+      }),
+      ...(productIds.length > 0 && {
+        "$Product.ProductId$": {
+          [Op.in]: productIds,
+        },
+      }),
+      ...(categoryIds.length > 0 && {
+        "$Product.CategoryId$": {
+          [Op.in]: categoryIds,
+        },
+      }),
+      ...(productCode && {
+        "$Product.ProductCode$": {
+          [Op.like]: productCode,
+        },
+      }),
+      // ...(productName && {
+      //   "$Product.Name$": {
+      //     [Op.like]: productName,
+      //   },
+      // }),
+      ...(fromDate &&
+        toDate && {
+          createdAt: {
+            [Op.between]: [
+              new Date(fromDate),
+              new Date(new Date(toDate).setHours(29, 29, 59, 999)),
+            ],
           },
         }),
-        ...(productIds.length > 0 && {
-          "$Product.ProductId$": {
-            [Op.in]: productIds,
+      ...(fromExpiryDate &&
+        toExpiryDate && {
+          ExpiryDateTime: {
+            [Op.between]: [
+              new Date(fromExpiryDate),
+              new Date(new Date(toExpiryDate).setHours(29, 29, 59, 999)),
+            ],
           },
         }),
-        ...(categoryIds.length > 0 && {
-          "$Product.CategoryId$": {
-            [Op.in]: categoryIds,
-          },
-        }),
-        ...(productCode && {
-          "$Product.ProductCode$": {
-            [Op.like]: productCode,
-          },
-        }),
-        ...(productName && {
-          "$Product.Name$": {
-            [Op.like]: productName,
-          },
-        }),
-        ...(fromDate &&
-          toDate && {
-            createdAt: {
-              [Op.between]: [
-                new Date(fromDate),
-                new Date(new Date(toDate).setHours(29, 29, 59, 999)),
-              ],
-            },
-          }),
-        ...(fromExpiryDate &&
-          toExpiryDate && {
-            ExpiryDateTime: {
-              [Op.between]: [
-                new Date(fromExpiryDate),
-                new Date(new Date(toExpiryDate).setHours(29, 29, 59, 999)),
-              ],
-            },
-          }),
     };
 
     const couponMasters = await CouponMaster.findAndCountAll({
@@ -81,6 +84,13 @@ exports.getAllCouponMasters = async (req, res) => {
         {
           model: Product,
           attributes: ["Name"],
+          where: {
+            ...(productName && {
+              Name: {
+                [Op.like]: `%${productName}%`,
+              },
+            }),
+          },
           include: [
             {
               model: Category,
@@ -151,7 +161,8 @@ exports.updateCouponMaster = async (req, res) => {
     if (ExpiryDateTime && new Date(ExpiryDateTime) < new Date()) {
       return res.status(400).json({
         success: false,
-        message: "Coupons have already expired, so their expiry date cannot be extended.",
+        message:
+          "Coupons have already expired, so their expiry date cannot be extended.",
       });
     }
 
@@ -196,6 +207,55 @@ exports.updateCouponMaster = async (req, res) => {
       success: false,
       message:
         error.message || "An error occurred while updating CouponMaster.",
+    });
+  }
+};
+
+exports.removeFileFromCouponMaster = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const couponMaster = await CouponMaster.findByPk(id);
+    if (!couponMaster) {
+      return res.status(404).json({
+        success: false,
+        message: "CouponMaster not found",
+      });
+    }
+
+    if (!couponMaster.FileName) {
+      return res.status(400).json({
+        success: false,
+        message: "File does not exist in this record",
+      });
+    }
+
+    const filePath = path.join(
+      __dirname,
+      "../../../pdf",
+      couponMaster.FileName
+    );
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    } else {
+      console.warn("File not found in directory");
+    }
+
+    await CouponMaster.update(
+      { FileName: "" },
+      { where: { CouponMasterId: id } }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "File deleted and FileName removed successfully",
+    });
+  } catch (error) {
+    console.error("Error removing file:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while removing the file.",
     });
   }
 };
