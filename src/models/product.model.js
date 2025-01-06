@@ -9,14 +9,14 @@ module.exports = (sequelize, Sequelize) => {
       },
       Name: {
         type: Sequelize.STRING(100),
-        // allowNull: false,
-        unique: true,
-        collate: "C",
+        allowNull: false,
+        // unique: true,
+        collate: "utf8_general_ci",
       },
       ProductCode: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true,
+        // unique: true,
       },
       CategoryId: {
         type: Sequelize.INTEGER,
@@ -85,6 +85,16 @@ module.exports = (sequelize, Sequelize) => {
     {
       timestamps: true,
       paranoid: true,
+      indexes: [
+        {
+          unique: true,
+          fields: ["Name"],
+        },
+        {
+          unique: true,
+          fields: ["ProductCode"],
+        },
+      ],
     }
   );
 

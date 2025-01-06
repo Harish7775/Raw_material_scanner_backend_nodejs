@@ -23,9 +23,9 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.STRING,
       },
       Phone: {
-        type: Sequelize.STRING,
-        allowNull: true,
-        unique: true,
+        type: Sequelize.STRING(20),
+        // allowNull: true,
+        // unique: true,
       },
       Password: {
         type: Sequelize.STRING,
@@ -49,6 +49,12 @@ module.exports = (sequelize, Sequelize) => {
     {
       timestamps: true,
       paranoid: true,
+      indexes: [
+        {
+          unique: true,
+          fields: ["Phone"],
+        },
+      ],
     }
   );
 

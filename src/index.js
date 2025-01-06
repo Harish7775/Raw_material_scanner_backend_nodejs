@@ -21,3 +21,5 @@ app.use(cors());
 app.use("/v1", allRouters);
 
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+
+app.use("/pdf", express.static(path.join(__dirname, "..", "pdf")));

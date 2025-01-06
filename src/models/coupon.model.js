@@ -8,11 +8,14 @@ module.exports = (sequelize, Sequelize) => {
         autoIncrement: true,
       },
       CouponCode: {
-        type: Sequelize.STRING(10),
+        type: Sequelize.STRING(20),
         allowNull: false,
-        unique: true,
+        // unique: true,
       },
       ProductId: {
+        type: Sequelize.INTEGER,
+      },
+      CouponMasterId: {
         type: Sequelize.INTEGER,
       },
       ExpiryDateTime: {
@@ -53,6 +56,12 @@ module.exports = (sequelize, Sequelize) => {
     {
       timestamps: true,
       paranoid: true,
+      indexes: [
+        {
+          unique: true,
+          fields: ["CouponCode"],
+        },
+      ],
     }
   );
 
@@ -60,6 +69,11 @@ module.exports = (sequelize, Sequelize) => {
     Coupon.belongsTo(models.Product, {
       foreignKey: "ProductId",
       targetKey: "ProductId",
+      constraints: true,
+    });
+    Coupon.belongsTo(models.CouponMaster, {
+      foreignKey: "CouponMasterId",
+      targetKey: "CouponMasterId",
       constraints: true,
     });
     Coupon.belongsTo(models.Users, {

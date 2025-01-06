@@ -234,12 +234,12 @@ exports.getAllUsers = async (req, res) => {
       [Op.or]: [
         {
           FirstName: {
-            [Op.iLike]: `%${search}%`,
+            [Op.like]: `%${search}%`,
           },
         },
         {
           LastName: {
-            [Op.iLike]: `%${search}%`,
+            [Op.like]: `%${search}%`,
           },
         },
       ],
@@ -595,8 +595,8 @@ exports.getRetailerDetailById = async (req, res) => {
       IsActive: true,
       ...(search && {
         [Op.or]: [
-          { FirstName: { [Op.iLike]: `%${search}%` } },
-          { LastName: { [Op.iLike]: `%${search}%` } },
+          { FirstName: { [Op.like]: `%${search}%` } },
+          { LastName: { [Op.like]: `%${search}%` } },
         ],
       }),
     };
@@ -644,10 +644,10 @@ exports.getRetailerDetailById = async (req, res) => {
         // IsActive: true,
         ...(search && {
           [Op.or]: [
-            { FirstName: { [Op.iLike]: `%${search}%` } },
-            { LastName: { [Op.iLike]: `%${search}%` } },
-            { Email: { [Op.iLike]: `%${search}%` } },
-            { Phone: { [Op.iLike]: `%${search}%` } },
+            { FirstName: { [Op.like]: `%${search}%` } },
+            { LastName: { [Op.like]: `%${search}%` } },
+            { Email: { [Op.like]: `%${search}%` } },
+            { Phone: { [Op.like]: `%${search}%` } },
           ],
         }),
       },

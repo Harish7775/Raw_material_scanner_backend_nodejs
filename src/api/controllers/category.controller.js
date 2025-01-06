@@ -44,7 +44,7 @@ exports.getAllCategories = async (req, res) => {
 
     const whereCondition = {
       Name: {
-        [db.Sequelize.Op.iLike]: `%${search}%`,
+        [db.Sequelize.Op.like]: `%${search}%`,
       },
     };
 

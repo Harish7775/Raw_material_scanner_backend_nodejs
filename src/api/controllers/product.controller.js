@@ -8,24 +8,36 @@ exports.createProduct = async (req, res) => {
   try {
     req.body.CreatedBy = req.user.id;
     req.body.ModifiedBy = req.user.id;
-    req.body.Name = req.body.Name.trim();
+    const inputName = req.body.Name.trim();
 
     const existingProduct = await Product.findOne({
-      where: { Name: { [db.Sequelize.Op.iLike]: req.body.Name } },
+      where: {
+        Name: {
+          [db.Sequelize.Op.like]: `%${inputName}%`,
+        },
+      },
     });
-    
+
     if (existingProduct) {
-      return res.status(400).json({ success: false, message: "Product Name already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "Product Name already exists",
+      });
     }
 
-    const product = await Product.create(req.body);
+    const product = await Product.create({
+      ...req.body,
+      Name: inputName,
+    });
 
     return res.status(200).json({ success: true, product });
   } catch (error) {
     if (error.name === "SequelizeUniqueConstraintError") {
       return res.status(400).json({
         success: false,
-        message: error.errors[0]?.message || "A product with this name already exists.",
+        message:
+          error.errors[0]?.message ||
+          "A product with this name already exists.",
       });
     }
 
@@ -68,7 +80,7 @@ exports.getAllProducts = async (req, res) => {
     const whereCondition = {
       ...(search && {
         Name: {
-          [db.Sequelize.Op.iLike]: `%${search}%`,
+          [db.Sequelize.Op.like]: `%${search}%`,
         },
       }),
       ...(categoryIds.length > 0 && {
@@ -163,7 +175,6 @@ exports.updateProduct = async (req, res) => {
       success: false,
       message: error.message || "An error occurred while update the product.",
     });
-    
   }
 };
 
@@ -176,7 +187,7 @@ exports.deleteProduct = async (req, res) => {
       where: { ProductId: id },
       force: true,
     });
-    
+
     if (result) {
       const coupon = await Coupon.destroy({ where: { ProductId: id } });
       return res
