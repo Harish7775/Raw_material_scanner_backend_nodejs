@@ -132,14 +132,14 @@ exports.createCoupon = async (req, res) => {
 
       doc.image(qrCodeData, 400, y + 120, { width: qrSize });
 
-      doc
-        .fontSize(10)
-        .text(
-          "For any assistance, contact our helpline - [+91 79765 74376]",
-          40,
-          y + qrSize + 140,
-          { width: 400, align: "left" }
-        );
+      // doc
+      //   .fontSize(10)
+      //   .text(
+      //     // "For any assistance, contact our helpline.",
+      //     40,
+      //     y + qrSize + 140,
+      //     { width: 400, align: "left" }
+      //   );
 
       y += qrSize + 220;
       couponsPerPage++;
