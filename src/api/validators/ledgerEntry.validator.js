@@ -8,6 +8,7 @@ const createLedgerEntrySchema = Joi.object().keys({
   TransactionDate: Joi.date().optional(),
   Unit: Joi.number().optional(),
   PersonalNote: Joi.string().optional().allow(""),
+  ProductId: Joi.number().required().error(new Error("Id is inValid")),
 });
 
 const updateLedgerEntrySchema = Joi.object().keys({
@@ -17,7 +18,7 @@ const updateLedgerEntrySchema = Joi.object().keys({
   TransactionDate: Joi.date().optional().allow(""),
   Unit: Joi.number().optional(),
   PersonalNote: Joi.string().optional().allow(""),
-  CategoryId: Joi.number(),
+  // CategoryId: Joi.number(),
   ProductId: Joi.number(),
 });
 

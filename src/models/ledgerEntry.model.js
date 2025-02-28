@@ -31,6 +31,9 @@ module.exports = (sequelize, Sequelize) => {
       RetailerUserId: {
         type: Sequelize.INTEGER,
       },
+      ProductId: {
+        type: Sequelize.INTEGER,
+      },
       CreatedBy: {
         type: Sequelize.INTEGER,
         allowNull: true,
@@ -52,6 +55,12 @@ module.exports = (sequelize, Sequelize) => {
       targetKey: "UserId",
       constraints: true,
       as: "UserDetail",
+    });
+    LedgerEntry.belongsTo(models.Product, {
+      foreignKey: "ProductId",
+      targetKey: "ProductId",
+      constraints: true,
+      as: "ProductDetail",
     });
     LedgerEntry.belongsTo(models.Users, {
       foreignKey: "CreatedBy",
