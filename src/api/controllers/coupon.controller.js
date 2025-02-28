@@ -6,6 +6,7 @@ const Category = db.Category;
 const Company = db.Company;
 const User = db.Users;
 const CouponMaster = db.CouponMaster;
+const LedgerEntry = db.LedgerEntry;
 const { Op } = require("sequelize");
 const moment = require("moment");
 const QRCode = require("qrcode");
@@ -62,92 +63,115 @@ exports.createCoupon = async (req, res) => {
       "../../../pdf",
       `coupons_${Date.now()}.pdf`
     );
-    const doc = new PDFDocument({ size: "A4" });
+    const doc = new PDFDocument({ size: "A3", margin: 20 });
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
-    const qrSize = 120;
-    const leftWidth = 250;
-    let y = 10;
-    let couponsPerPage = 0;
+    const qrWidth = 55;
+    const qrHeight = 75;
+    const leftWidth = 130;
+    const ROWS = 9;
+    const COLS = 5;
+    const pageWidth = doc.page.width - 40;
+    const pageHeight = doc.page.height - 40;
+    const colSpacing = pageWidth / COLS;
+    const rowSpacing = pageHeight / ROWS;
 
     const logoPath = path.join(
       __dirname,
       "../../../images/trubsond-logo-png.png"
     );
 
+    let rowIndex = 0;
+    let colIndex = 0;
+
     for (const coupon of coupons) {
       const qrCodeData = await QRCode.toDataURL(coupon.CouponCode);
 
-      doc.rect(0, y + 50, doc.page.width, 250).fill("#215064");
+      const x = colIndex * colSpacing + 20;
+      const y = rowIndex * rowSpacing + 20;
 
-      doc.image(logoPath, 32, y, {
-        width: 150,
-        height: 50,
+      doc.save();
+      doc.rect(x, y + 22, colSpacing - 10, rowSpacing - 25).fill("#215064");
+      doc.restore();
+
+      doc.image(logoPath, x + 5, y + 5, { width: 45, height: 13 });
+
+      doc.image(qrCodeData, x + colSpacing - qrWidth - 15, y + 30, {
+        width: qrWidth,
+        height: qrHeight,
       });
+
+      const textStartX = x + 5;
+      const textStartY = y + 30;
 
       doc
         .fillColor("white")
-        .fontSize(13)
-        .text("Procedure:", 40, y + 70, {
+        .fontSize(7)
+        .text("Procedure:", textStartX, textStartY);
+      doc
+        .fontSize(5)
+        .text(
+          "To redeem your coupon, contact your",
+          textStartX,
+          textStartY + 10,
+          {
+            width: leftWidth,
+            align: "left",
+            // lineGap: -1,
+          }
+        )
+        .text("nearest Truebond retailer.", textStartX, textStartY + 16, {
           width: leftWidth,
           align: "left",
+          // lineGap: -1,
         });
 
       doc
-        .fontSize(12)
-        .text(
-          "To redeem your coupon, contact your nearest Truebond retailer and immediately claim your coupon discount.",
-          40,
-          y + 90,
-          { width: leftWidth, align: "left" }
-        );
+        .fontSize(7)
+        .text("Terms and Conditions:", textStartX, textStartY + 25);
 
-      doc.fontSize(13).text("Terms and Conditions:", 40, y + 150, {
-        width: leftWidth,
-        align: "left",
-      });
+      const termsStartY = textStartY + 34;
 
       const terms = [
-        "This offer is valid for limited products.",
-        "Redeem at authorized retailers only.",
+        "Valid for selected products.",
+        "Redeem at authorized stores.",
         "Cannot be exchanged for cash.",
-        "Valid until expiry date mentioned.",
-        "Damaged QR codes will not be accepted.",
+        "Valid until expiry date.",
+        "Damaged coupons not accepted.",
       ];
 
       terms.forEach((term, index) => {
-        doc
-          .fontSize(12)
-          .text(`${index + 1}. ${term}`, 40, y + 170 + index * 15, {
-            width: leftWidth,
-            align: "left",
-          });
+        doc.fontSize(5).text(
+          `${index + 1}. ${term}`,
+          textStartX,
+          termsStartY + index * 5
+          // { lineGap: -1 }
+        );
       });
 
-      doc.fontSize(13).text(`Coupon Code: ${coupon.CouponCode}`, 300, y + 70, {
-        width: 240,
-        align: "center",
-      });
+      doc
+        .fontSize(5)
+        .text(
+          `Code: ${coupon.CouponCode}`,
+          x + colSpacing - qrWidth - 15,
+          y + 110,
+          {
+            width: qrWidth,
+            align: "center",
+          }
+        );
 
-      doc.image(qrCodeData, 400, y + 120, { width: qrSize });
+      colIndex++;
 
-      // doc
-      //   .fontSize(10)
-      //   .text(
-      //     // "For any assistance, contact our helpline.",
-      //     40,
-      //     y + qrSize + 140,
-      //     { width: 400, align: "left" }
-      //   );
+      if (colIndex >= COLS) {
+        colIndex = 0;
+        rowIndex++;
 
-      y += qrSize + 220;
-      couponsPerPage++;
-
-      if (couponsPerPage === 2) {
-        doc.addPage();
-        y = 10;
-        couponsPerPage = 0;
+        if (rowIndex >= ROWS) {
+          doc.addPage();
+          rowIndex = 0;
+        }
       }
     }
 
@@ -398,6 +422,31 @@ exports.updateCoupon = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "Coupon has already been redeemed" });
+    }
+
+    if (req.body.RedeemBy) {
+      const userCouponsCount = await Coupon.count({
+        where: {
+          RedeemBy: req.body.RedeemBy,
+          ProductId: coupon.ProductId,
+        },
+      });
+    
+      const userLedgerTotalUnits = await LedgerEntry.sum("Unit", {
+        where: {
+          RetailerUserId: req.body.RedeemBy,
+          ProductId: coupon.ProductId,
+        },
+      });
+    
+      const totalPurchasedUnits = userLedgerTotalUnits || 0;
+    
+      if (userCouponsCount >= totalPurchasedUnits) {
+        return res.status(400).json({
+          success: false,
+          message: "You can't scan coupons more than your purchased quantities.",
+        });
+      }
     }
 
     const currentDateTime = new Date();
