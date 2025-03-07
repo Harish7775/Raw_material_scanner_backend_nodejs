@@ -424,6 +424,13 @@ exports.updateCoupon = async (req, res) => {
         .json({ success: false, message: "Coupon has already been redeemed" });
     }
 
+    const currentDateTime = new Date();
+    if (coupon.ExpiryDateTime < currentDateTime) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Coupon has expired" });
+    }
+
     if (req.body.RedeemBy) {
       const userCouponsCount = await Coupon.count({
         where: {
@@ -431,29 +438,25 @@ exports.updateCoupon = async (req, res) => {
           ProductId: coupon.ProductId,
         },
       });
-    
+
       const userLedgerTotalUnits = await LedgerEntry.sum("Unit", {
         where: {
           RetailerUserId: req.body.RedeemBy,
           ProductId: coupon.ProductId,
         },
       });
-    
-      const totalPurchasedUnits = userLedgerTotalUnits || 0;
-    
-      if (userCouponsCount >= totalPurchasedUnits) {
-        return res.status(400).json({
-          success: false,
-          message: "You can't scan coupons more than your purchased quantities.",
-        });
-      }
-    }
 
-    const currentDateTime = new Date();
-    if (coupon.ExpiryDateTime < currentDateTime) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Coupon has expired" });
+      const totalPurchasedUnits = userLedgerTotalUnits || 0;
+
+      if (userCouponsCount >= totalPurchasedUnits) {
+        const [updated] = await Coupon.update(updateData, {
+          where: { CouponId: id },
+        });
+
+        return res
+          .status(200)
+          .json({ success: true, message: "No reward point for this scan..!" });
+      }
     }
 
     const [updated] = await Coupon.update(updateData, {
