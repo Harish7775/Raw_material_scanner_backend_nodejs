@@ -3,13 +3,80 @@ const MasonSoDetail = db.MasonSoDetail;
 const MasonSo = db.MasonSo;
 const Users = db.Users;
 const Product = db.Product;
-const { Op } = require("sequelize");
+const LedgerEntry = db.LedgerEntry;
+const { Op, Sequelize } = require("sequelize");
 const sendSms = require("../../helper/sendsms");
 const { rewardPointsTemplate } = require("../../helper/smsTemplates");
 
 exports.createMasonSoDetail = async (req, res) => {
   try {
     const { products, masonId } = req.body;
+
+    const ledgerUnitsPerProduct = await LedgerEntry.findAll({
+      attributes: [
+        "ProductId",
+        [
+          Sequelize.fn(
+            "COALESCE",
+            Sequelize.fn("SUM", Sequelize.col("Unit")),
+            0
+          ),
+          "totalUnits",
+        ],
+      ],
+      where: {
+        RetailerUserId: req.user.id,
+        ProductId: { [Op.in]: products.map((p) => Number(p.productId)) },
+      },
+      group: ["ProductId"],
+      raw: true,
+    });
+
+    const usedMasonUnitsPerProduct = await MasonSoDetail.findAll({
+      attributes: [
+        "ProductId",
+        [
+          Sequelize.fn(
+            "COALESCE",
+            Sequelize.fn("SUM", Sequelize.col("Quantity")),
+            0
+          ),
+          "totalQuantity",
+        ],
+      ],
+      where: {
+        ProductId: { [Op.in]: products.map((p) => Number(p.productId)) },
+        CreatedBy: req.user.id,
+      },
+      group: ["ProductId"],
+      raw: true,
+    });
+
+    const ledgerUnitsMap = Object.fromEntries(
+      ledgerUnitsPerProduct.map((item) => [
+        item.ProductId,
+        parseFloat(item.totalUnits) || 0,
+      ])
+    );
+    const usedMasonUnitsMap = Object.fromEntries(
+      usedMasonUnitsPerProduct.map((item) => [
+        item.ProductId,
+        parseFloat(item.totalQuantity) || 0,
+      ])
+    );
+
+    for (const product of products) {
+      const availableUnits = ledgerUnitsMap[product.productId] || 0;
+      const usedUnits = usedMasonUnitsMap[product.productId] || 0;
+      const newMasonQuantity = product.quantity;
+
+      if (usedUnits + newMasonQuantity > availableUnits) {
+        return res.status(400).json({
+          success: false,
+          message: `You cannot allocate more units than purchased.`,
+        });
+      }
+    }
 
     const masonSo = await MasonSo.create({
       MasonId: masonId,
@@ -18,6 +85,14 @@ exports.createMasonSoDetail = async (req, res) => {
     });
 
     const productIds = products.map((p) => p.productId);
+
+    const userLedgerTotalUnits = await LedgerEntry.sum("Unit", {
+      where: {
+        RetailerUserId: req.user.id,
+        ProductId: productIds,
+      },
+    });
+
     const productList = await Product.findAll({
       where: { ProductId: productIds },
     });
@@ -26,7 +101,8 @@ exports.createMasonSoDetail = async (req, res) => {
 
     const masonSoDetails = products.map((product) => {
       const prod = productList.find((p) => p.ProductId === product.productId);
-      const rewardPoints = product.quantity * parseFloat(prod?.RewardPointValue || 0);
+      const rewardPoints =
+        product.quantity * parseFloat(prod?.RewardPointValue || 0);
 
       totalRewardPoint += rewardPoints;
 
@@ -76,7 +152,9 @@ exports.createMasonSoDetail = async (req, res) => {
 
     await Promise.all([sendSms(toMason, messageMason)]);
 
-    return res.status(200).send({ success: true, message: "MassonSo Created Succssfully..!" });
+    return res
+      .status(200)
+      .send({ success: true, message: "MassonSo Created Succssfully..!" });
   } catch (err) {
     console.error("Error creating MasonSoDetail:", err);
     return res.status(500).send({
@@ -113,7 +191,10 @@ exports.getAllMasonSoDetails = async (req, res) => {
       };
     }
 
-    const offset = (page - 1) * limit;
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const offset = (pageNumber - 1) * pageSize;
+
     const { count, rows } = await MasonSo.findAndCountAll({
       where: whereConditions,
       include: [
@@ -133,26 +214,15 @@ exports.getAllMasonSoDetails = async (req, res) => {
       ],
       order: [["createdAt", "DESC"]],
       offset,
-      limit,
+      limit: pageSize,
     });
-
-    // const data = rows.map((masonSo) => {
-    //   const totalRewardPoints = masonSo.details.reduce(
-    //     (sum, detail) => sum + parseFloat(detail.RewardPoints),
-    //     0
-    //   );
-    //   return {
-    //     ...masonSo.toJSON(),
-    //     totalRewardPoints,
-    //   };
-    // });
 
     res.status(200).json({
       success: true,
       data: rows,
-      totalItems: count,      
-      totalPages: Math.ceil(count / limit),
-      currentPage: parseInt(page),
+      totalItems: count,
+      totalPages: Math.ceil(count / pageSize),
+      currentPage: pageNumber,
     });
   } catch (err) {
     console.error("Error fetching MasonSoDetails:", err);
@@ -162,7 +232,6 @@ exports.getAllMasonSoDetails = async (req, res) => {
     });
   }
 };
-
 
 exports.getMasonSoDetailById = async (req, res) => {
   try {
