@@ -13,187 +13,218 @@ const QRCode = require("qrcode");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const sendSms = require("../../helper/sendsms");
 const { redeemAmountTemplate } = require("../../helper/smsTemplates");
 
 exports.createCoupon = async (req, res) => {
   try {
-    // const quantity = parseInt(req.query.quantity, 10);
-
-    // if (!quantity || quantity <= 0) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Invalid quantity. Please provide a positive integer.",
-    //   });
-    // }
+    const { ProductId, ExpiryDateTime, Amount, Quantity } = req.body;
+    const userId = req.user.id;
+    const timestamp = Date.now();
+    const pdfFileName = `coupons_${timestamp}.pdf`;
+    const pdfPath = path.join(__dirname, "../../../pdf", pdfFileName);
 
     const couponMaster = await CouponMaster.create({
-      ProductId: req.body.ProductId,
-      ExpiryDateTime: req.body.ExpiryDateTime,
-      Amount: req.body.Amount,
-      Quantity: req.body.Quantity,
-      FileName: `coupons_${Date.now()}.pdf`,
-      CreatedBy: req.user.id,
-      ModifiedBy: req.user.id,
+      ProductId,
+      ExpiryDateTime,
+      Amount,
+      Quantity,
+      FileName: pdfFileName,
+      CreatedBy: userId,
+      ModifiedBy: userId,
     });
 
     const couponMasterId = couponMaster.CouponMasterId;
 
-    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const length = 20;
+    const totalCouponsForPDF = Quantity * 2;
 
-    const coupons = Array.from({ length: req.body.Quantity }, () => {
-      const CouponCode = Array.from({ length }, () =>
-        characters.charAt(Math.floor(Math.random() * characters.length))
-      ).join("");
+    const totalCouponsForDB = Quantity;
 
-      return {
-        ...req.body,
-        CouponCode,
-        CouponMasterId: couponMasterId,
-        CreatedBy: req.user.id,
-        ModifiedBy: req.user.id,
-      };
-    });
-
-    await Coupon.bulkCreate(coupons);
-
-    const pdfPath = path.join(
-      __dirname,
-      "../../../pdf",
-      `coupons_${Date.now()}.pdf`
-    );
     const doc = new PDFDocument({ size: "A3", margin: 20 });
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
-    const qrWidth = 55;
-    const qrHeight = 75;
-    const leftWidth = 130;
-    const ROWS = 9;
-    const COLS = 5;
-    const pageWidth = doc.page.width - 40;
-    const pageHeight = doc.page.height - 40;
-    const colSpacing = pageWidth / COLS;
-    const rowSpacing = pageHeight / ROWS;
-
+    const qrWidth = 55,
+      qrHeight = 75,
+      leftWidth = 130;
+    const ROWS_PER_PAGE = 9,
+      COLS = 5;
+    const pageWidth = doc.page.width - 40,
+      pageHeight = doc.page.height - 40;
+    const colSpacing = pageWidth / COLS,
+      rowSpacing = pageHeight / ROWS_PER_PAGE;
     const logoPath = path.join(
       __dirname,
       "../../../images/trubsond-logo-png.png"
     );
 
-    let rowIndex = 0;
-    let colIndex = 0;
+    const dbBatchSize = 1000;
+    const dbBatches = Math.ceil(totalCouponsForDB / dbBatchSize);
+    const dbCoupons = [];
 
-    for (const coupon of coupons) {
-      const qrCodeData = await QRCode.toDataURL(coupon.CouponCode);
+    for (let dbBatchNum = 0; dbBatchNum < dbBatches; dbBatchNum++) {
+      const currentBatchSize = Math.min(
+        dbBatchSize,
+        totalCouponsForDB - dbBatchNum * dbBatchSize
+      );
+      const dbBatchCoupons = [];
 
+      for (let i = 0; i < currentBatchSize; i++) {
+        const CouponCode = crypto.randomBytes(10).toString("hex").toUpperCase();
+        const qrCodeData = await QRCode.toDataURL(CouponCode);
+
+        const couponData = {
+          ProductId,
+          ExpiryDateTime,
+          Amount,
+          CouponCode,
+          CouponMasterId: couponMasterId,
+          CreatedBy: userId,
+          ModifiedBy: userId,
+          isDynamic: true,
+          qrCodeData,
+        };
+
+        dbBatchCoupons.push(couponData);
+        dbCoupons.push(couponData);
+      }
+
+      await Coupon.bulkCreate(dbBatchCoupons);
+      if (global.gc) global.gc();
+    }
+
+    let pdfCouponIndex = 0;
+    let dynamicCouponIndex = 0;
+
+    while (pdfCouponIndex < totalCouponsForPDF) {
+      if (pdfCouponIndex > 0 && pdfCouponIndex % (ROWS_PER_PAGE * COLS) === 0) {
+        doc.addPage();
+      }
+
+      const rowIndex = Math.floor(
+        (pdfCouponIndex % (ROWS_PER_PAGE * COLS)) / COLS
+      );
+      const colIndex = pdfCouponIndex % COLS;
       const x = colIndex * colSpacing + 20;
       const y = rowIndex * rowSpacing + 20;
+      const isDynamic = pdfCouponIndex % 2 === 0;
 
-      doc.save();
-      doc.rect(x, y + 22, colSpacing - 10, rowSpacing - 25).fill("#215064");
-      doc.restore();
+      if (isDynamic) {
+        const coupon = dbCoupons[dynamicCouponIndex++];
 
-      doc.image(logoPath, x + 5, y + 5, { width: 45, height: 13 });
+        doc
+          .save()
+          .rect(x, y + 22, colSpacing - 10, rowSpacing - 25)
+          .fill("#215064")
+          .restore();
+        doc.image(logoPath, x + 5, y + 5, { width: 45, height: 13 });
 
-      doc.image(qrCodeData, x + colSpacing - qrWidth - 15, y + 30, {
-        width: qrWidth,
-        height: qrHeight,
-      });
-
-      const textStartX = x + 5;
-      const textStartY = y + 30;
-
-      doc
-        .fillColor("white")
-        .fontSize(7)
-        .text("Procedure:", textStartX, textStartY);
-      doc
-        .fontSize(5)
-        .text(
-          "To redeem your coupon, contact your",
-          textStartX,
-          textStartY + 10,
-          {
-            width: leftWidth,
-            align: "left",
-            // lineGap: -1,
-          }
-        )
-        .text("nearest Truebond retailer.", textStartX, textStartY + 16, {
-          width: leftWidth,
-          align: "left",
-          // lineGap: -1,
-        });
-
-      doc
-        .fontSize(7)
-        .text("Terms and Conditions:", textStartX, textStartY + 25);
-
-      const termsStartY = textStartY + 34;
-
-      const terms = [
-        "Valid for selected products.",
-        "Redeem at authorized stores.",
-        "Cannot be exchanged for cash.",
-        "Valid until expiry date.",
-        "Damaged coupons not accepted.",
-      ];
-
-      terms.forEach((term, index) => {
-        doc.fontSize(5).text(
-          `${index + 1}. ${term}`,
-          textStartX,
-          termsStartY + index * 5
-          // { lineGap: -1 }
-        );
-      });
-
-      doc
-        .fontSize(5)
-        .text(
-          `Code: ${coupon.CouponCode}`,
-          x + colSpacing - qrWidth - 15,
-          y + 110,
-          {
+        if (coupon.qrCodeData) {
+          doc.image(coupon.qrCodeData, x + colSpacing - qrWidth - 15, y + 30, {
             width: qrWidth,
-            align: "center",
-          }
+            height: qrHeight,
+          });
+        }
+
+        const textStartX = x + 5,
+          textStartY = y + 30;
+        doc
+          .fillColor("white")
+          .fontSize(7)
+          .text("Procedure:", textStartX, textStartY);
+        doc
+          .fontSize(5)
+          .text(
+            "To redeem your coupon, contact your",
+            textStartX,
+            textStartY + 10,
+            { width: leftWidth }
+          )
+          .text("nearest Truebond retailer.", textStartX, textStartY + 16, {
+            width: leftWidth,
+          })
+          .fontSize(7)
+          .text("Terms and Conditions:", textStartX, textStartY + 25);
+
+        const terms = [
+          "Valid for selected products.",
+          "Redeem at authorized stores.",
+          "Cannot be exchanged for cash.",
+          "Valid until expiry date.",
+          "Damaged coupons not accepted.",
+        ];
+        terms.forEach((term, i) =>
+          doc
+            .fontSize(5)
+            .text(`${i + 1}. ${term}`, textStartX, textStartY + 34 + i * 5)
         );
 
-      colIndex++;
+        doc
+          .fontSize(5)
+          .text(
+            `Code: ${coupon.CouponCode}`,
+            x + colSpacing - qrWidth - 15,
+            y + 110,
+            {
+              width: qrWidth,
+              align: "center",
+            }
+          );
+      } else {
+        const text = "COUPON 30 POINTS";
+        const fontSize = 10;
+        doc.fontSize(fontSize);
 
-      if (colIndex >= COLS) {
-        colIndex = 0;
-        rowIndex++;
+        const textWidth = doc.widthOfString(text) + 20;
+        const textHeight = doc.currentLineHeight() + 5;
+        const textX = x + (colSpacing - textWidth) / 2;
+        const textY = y + 100;
 
-        if (rowIndex >= ROWS) {
-          doc.addPage();
-          rowIndex = 0;
-        }
+        doc
+          .save()
+          .rect(x, y + 22, colSpacing - 10, rowSpacing - 25)
+          .fill("white")
+          .restore();
+        doc
+          .rect(x, y + 7.3, colSpacing - 10, rowSpacing - 10.3)
+          .lineWidth(1)
+          .stroke("#215064");
+        doc
+          .roundedRect(textX - 5, textY, textWidth, textHeight, textHeight / 2)
+          .fill("#215064")
+          .restore();
+        doc.image(logoPath, x + colSpacing - qrWidth - 90, y + 30, {
+          width: 130,
+          height: 50,
+        });
+        doc.fillColor("white").text(text, textX - 5, textY + 3, {
+          width: textWidth,
+          align: "center",
+        });
+      }
+
+      pdfCouponIndex++;
+
+      if (pdfCouponIndex % 1000 === 0) {
+        if (global.gc) global.gc();
       }
     }
 
     doc.end();
 
-    stream.on("finish", async () => {
-      await CouponMaster.update(
-        { FileName: path.basename(pdfPath) },
-        { where: { CouponMasterId: couponMasterId } }
-      );
-
-      return res.status(201).json({
+    stream.on("finish", () => {
+      res.status(201).json({
         success: true,
         message: "Coupons and QR Codes generated successfully.",
         pdfPath: pdfPath,
       });
     });
   } catch (error) {
-    console.error("Error generating QR codes and PDF:", error);
-    return res.status(500).json({
+    console.error("Coupon generation error:", error);
+    res.status(500).json({
       success: false,
-      message: error.message || "An error occurred while generating coupons.",
+      message: error.message || "Coupon generation failed",
     });
   }
 };
