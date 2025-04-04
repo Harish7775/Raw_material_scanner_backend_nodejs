@@ -172,7 +172,7 @@ exports.createCoupon = async (req, res) => {
             }
           );
       } else {
-        const text = "COUPON 30 POINTS";
+        const text = "COUPON";
         const fontSize = 10;
         doc.fontSize(fontSize);
 
