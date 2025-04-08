@@ -17,6 +17,217 @@ const crypto = require("crypto");
 const sendSms = require("../../helper/sendsms");
 const { redeemAmountTemplate } = require("../../helper/smsTemplates");
 
+// exports.createCoupon = async (req, res) => {
+//   try {
+//     const { ProductId, ExpiryDateTime, Amount, Quantity } = req.body;
+//     const userId = req.user.id;
+//     const timestamp = Date.now();
+//     const pdfFileName = `coupons_${timestamp}.pdf`;
+//     const pdfPath = path.join(__dirname, "../../../pdf", pdfFileName);
+
+//     const couponMaster = await CouponMaster.create({
+//       ProductId,
+//       ExpiryDateTime,
+//       Amount,
+//       Quantity,
+//       FileName: pdfFileName,
+//       CreatedBy: userId,
+//       ModifiedBy: userId,
+//     });
+
+//     const couponMasterId = couponMaster.CouponMasterId;
+
+//     const totalCouponsForPDF = Quantity * 2;
+
+//     const totalCouponsForDB = Quantity;
+
+//     const doc = new PDFDocument({ size: "A3", margin: 20 });
+//     const stream = fs.createWriteStream(pdfPath);
+//     doc.pipe(stream);
+
+//     const qrWidth = 55,
+//       qrHeight = 75,
+//       leftWidth = 130;
+//     const ROWS_PER_PAGE = 9,
+//       COLS = 5;
+//     const pageWidth = doc.page.width - 40,
+//       pageHeight = doc.page.height - 40;
+//     const colSpacing = pageWidth / COLS,
+//       rowSpacing = pageHeight / ROWS_PER_PAGE;
+//     const logoPath = path.join(
+//       __dirname,
+//       "../../../images/trubsond-logo-png.png"
+//     );
+
+//     const dbBatchSize = 1000;
+//     const dbBatches = Math.ceil(totalCouponsForDB / dbBatchSize);
+//     const dbCoupons = [];
+
+//     for (let dbBatchNum = 0; dbBatchNum < dbBatches; dbBatchNum++) {
+//       const currentBatchSize = Math.min(
+//         dbBatchSize,
+//         totalCouponsForDB - dbBatchNum * dbBatchSize
+//       );
+//       const dbBatchCoupons = [];
+
+//       for (let i = 0; i < currentBatchSize; i++) {
+//         const CouponCode = crypto.randomBytes(10).toString("hex").toUpperCase();
+//         const qrCodeData = await QRCode.toDataURL(CouponCode);
+
+//         const couponData = {
+//           ProductId,
+//           ExpiryDateTime,
+//           Amount,
+//           CouponCode,
+//           CouponMasterId: couponMasterId,
+//           CreatedBy: userId,
+//           ModifiedBy: userId,
+//           isDynamic: true,
+//           qrCodeData,
+//         };
+
+//         dbBatchCoupons.push(couponData);
+//         dbCoupons.push(couponData);
+//       }
+
+//       await Coupon.bulkCreate(dbBatchCoupons);
+//       if (global.gc) global.gc();
+//     }
+
+//     let pdfCouponIndex = 0;
+//     let dynamicCouponIndex = 0;
+
+//     while (pdfCouponIndex < totalCouponsForPDF) {
+//       if (pdfCouponIndex > 0 && pdfCouponIndex % (ROWS_PER_PAGE * COLS) === 0) {
+//         doc.addPage();
+//       }
+
+//       const rowIndex = Math.floor(
+//         (pdfCouponIndex % (ROWS_PER_PAGE * COLS)) / COLS
+//       );
+//       const colIndex = pdfCouponIndex % COLS;
+//       const x = colIndex * colSpacing + 20;
+//       const y = rowIndex * rowSpacing + 20;
+//       const isDynamic = pdfCouponIndex % 2 === 0;
+
+//       if (isDynamic) {
+//         const coupon = dbCoupons[dynamicCouponIndex++];
+
+//         doc
+//           .save()
+//           .rect(x, y + 22, colSpacing - 10, rowSpacing - 25)
+//           .fill("#215064")
+//           .restore();
+//         doc.image(logoPath, x + 5, y + 5, { width: 45, height: 13 });
+
+//         if (coupon.qrCodeData) {
+//           doc.image(coupon.qrCodeData, x + colSpacing - qrWidth - 15, y + 30, {
+//             width: qrWidth,
+//             height: qrHeight,
+//           });
+//         }
+
+//         const textStartX = x + 5,
+//           textStartY = y + 30;
+//         doc
+//           .fillColor("white")
+//           .fontSize(7)
+//           .text("Procedure:", textStartX, textStartY);
+//         doc
+//           .fontSize(5)
+//           .text(
+//             "To redeem your coupon, contact your",
+//             textStartX,
+//             textStartY + 10,
+//             { width: leftWidth }
+//           )
+//           .text("nearest Truebond retailer.", textStartX, textStartY + 16, {
+//             width: leftWidth,
+//           })
+//           .fontSize(7)
+//           .text("Terms and Conditions:", textStartX, textStartY + 25);
+
+//         const terms = [
+//           "Valid for selected products.",
+//           "Redeem at authorized stores.",
+//           "Cannot be exchanged for cash.",
+//           "Valid until expiry date.",
+//           "Damaged coupons not accepted.",
+//         ];
+//         terms.forEach((term, i) =>
+//           doc
+//             .fontSize(5)
+//             .text(`${i + 1}. ${term}`, textStartX, textStartY + 34 + i * 5)
+//         );
+
+//         doc
+//           .fontSize(5)
+//           .text(
+//             `Code: ${coupon.CouponCode}`,
+//             x + colSpacing - qrWidth - 15,
+//             y + 110,
+//             {
+//               width: qrWidth,
+//               align: "center",
+//             }
+//           );
+//       } else {
+//         const text = "COUPON";
+//         const fontSize = 10;
+//         doc.fontSize(fontSize);
+
+//         const textWidth = doc.widthOfString(text) + 20;
+//         const textHeight = doc.currentLineHeight() + 5;
+//         const textX = x + (colSpacing - textWidth) / 2;
+//         const textY = y + 100;
+
+//         doc
+//           .save()
+//           .rect(x, y + 22, colSpacing - 10, rowSpacing - 25)
+//           .fill("white")
+//           .restore();
+//         doc
+//           .rect(x, y + 7.3, colSpacing - 10, rowSpacing - 10.3)
+//           .lineWidth(1)
+//           .stroke("#215064");
+//         doc
+//           .roundedRect(textX - 5, textY, textWidth, textHeight, textHeight / 2)
+//           .fill("#215064")
+//           .restore();
+//         doc.image(logoPath, x + colSpacing - qrWidth - 90, y + 30, {
+//           width: 130,
+//           height: 50,
+//         });
+//         doc.fillColor("white").text(text, textX - 5, textY + 3, {
+//           width: textWidth,
+//           align: "center",
+//         });
+//       }
+
+//       pdfCouponIndex++;
+
+//       if (pdfCouponIndex % 1000 === 0) {
+//         if (global.gc) global.gc();
+//       }
+//     }
+
+//     doc.end();
+
+//     stream.on("finish", () => {
+//       res.status(201).json({
+//         success: true,
+//         message: "Coupons and QR Codes generated successfully.",
+//         pdfPath: pdfPath,
+//       });
+//     });
+//   } catch (error) {
+//     console.error("Coupon generation error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: error.message || "Coupon generation failed",
+//     });
+//   }
+// };
 exports.createCoupon = async (req, res) => {
   try {
     const { ProductId, ExpiryDateTime, Amount, Quantity } = req.body;
@@ -25,6 +236,7 @@ exports.createCoupon = async (req, res) => {
     const pdfFileName = `coupons_${timestamp}.pdf`;
     const pdfPath = path.join(__dirname, "../../../pdf", pdfFileName);
 
+    // Create Coupon Master
     const couponMaster = await CouponMaster.create({
       ProductId,
       ExpiryDateTime,
@@ -36,12 +248,13 @@ exports.createCoupon = async (req, res) => {
     });
 
     const couponMasterId = couponMaster.CouponMasterId;
+    const totalDynamicCoupons = Quantity;
+    const couponsPerPage = 9 * 5;
 
-    const totalCouponsForPDF = Quantity * 2;
+    const dynamicPages = Math.ceil(totalDynamicCoupons / couponsPerPage);
+    const totalPages = dynamicPages * 2;
 
-    const totalCouponsForDB = Quantity;
-
-    const doc = new PDFDocument({ size: "A3", margin: 20 });
+    const doc = new PDFDocument({ size: "A3", margin: 20, bufferPages: true });
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
@@ -60,13 +273,13 @@ exports.createCoupon = async (req, res) => {
     );
 
     const dbBatchSize = 1000;
-    const dbBatches = Math.ceil(totalCouponsForDB / dbBatchSize);
-    const dbCoupons = [];
+    const dbBatches = Math.ceil(totalDynamicCoupons / dbBatchSize);
+    const allDynamicCoupons = [];
 
     for (let dbBatchNum = 0; dbBatchNum < dbBatches; dbBatchNum++) {
       const currentBatchSize = Math.min(
         dbBatchSize,
-        totalCouponsForDB - dbBatchNum * dbBatchSize
+        totalDynamicCoupons - dbBatchNum * dbBatchSize
       );
       const dbBatchCoupons = [];
 
@@ -74,7 +287,7 @@ exports.createCoupon = async (req, res) => {
         const CouponCode = crypto.randomBytes(10).toString("hex").toUpperCase();
         const qrCodeData = await QRCode.toDataURL(CouponCode);
 
-        const couponData = {
+        dbBatchCoupons.push({
           ProductId,
           ExpiryDateTime,
           Amount,
@@ -84,129 +297,152 @@ exports.createCoupon = async (req, res) => {
           ModifiedBy: userId,
           isDynamic: true,
           qrCodeData,
-        };
-
-        dbBatchCoupons.push(couponData);
-        dbCoupons.push(couponData);
+        });
       }
 
       await Coupon.bulkCreate(dbBatchCoupons);
+      allDynamicCoupons.push(...dbBatchCoupons);
       if (global.gc) global.gc();
     }
 
-    let pdfCouponIndex = 0;
     let dynamicCouponIndex = 0;
+    let staticCouponIndex = 0;
 
-    while (pdfCouponIndex < totalCouponsForPDF) {
-      if (pdfCouponIndex > 0 && pdfCouponIndex % (ROWS_PER_PAGE * COLS) === 0) {
-        doc.addPage();
-      }
+    for (let pageNum = 0; pageNum < totalPages; pageNum++) {
+      if (pageNum > 0) doc.addPage();
 
-      const rowIndex = Math.floor(
-        (pdfCouponIndex % (ROWS_PER_PAGE * COLS)) / COLS
+      const isDynamicPage = pageNum % 2 === 0;
+      const couponsOnThisPage = Math.min(
+        couponsPerPage,
+        isDynamicPage
+          ? totalDynamicCoupons - dynamicCouponIndex
+          : totalDynamicCoupons - staticCouponIndex
       );
-      const colIndex = pdfCouponIndex % COLS;
-      const x = colIndex * colSpacing + 20;
-      const y = rowIndex * rowSpacing + 20;
-      const isDynamic = pdfCouponIndex % 2 === 0;
 
-      if (isDynamic) {
-        const coupon = dbCoupons[dynamicCouponIndex++];
+      for (let row = 0; row < ROWS_PER_PAGE; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const currentCoupon = row * COLS + col;
+          if (currentCoupon >= couponsOnThisPage) break;
 
-        doc
-          .save()
-          .rect(x, y + 22, colSpacing - 10, rowSpacing - 25)
-          .fill("#215064")
-          .restore();
-        doc.image(logoPath, x + 5, y + 5, { width: 45, height: 13 });
+          const x = col * colSpacing + 20;
+          const y = row * rowSpacing + 20;
 
-        if (coupon.qrCodeData) {
-          doc.image(coupon.qrCodeData, x + colSpacing - qrWidth - 15, y + 30, {
-            width: qrWidth,
-            height: qrHeight,
-          });
-        }
+          if (isDynamicPage) {
+            const coupon = allDynamicCoupons[dynamicCouponIndex++];
 
-        const textStartX = x + 5,
-          textStartY = y + 30;
-        doc
-          .fillColor("white")
-          .fontSize(7)
-          .text("Procedure:", textStartX, textStartY);
-        doc
-          .fontSize(5)
-          .text(
-            "To redeem your coupon, contact your",
-            textStartX,
-            textStartY + 10,
-            { width: leftWidth }
-          )
-          .text("nearest Truebond retailer.", textStartX, textStartY + 16, {
-            width: leftWidth,
-          })
-          .fontSize(7)
-          .text("Terms and Conditions:", textStartX, textStartY + 25);
+            doc
+              .save()
+              .rect(x, y + 22, colSpacing - 10, rowSpacing - 25)
+              .fill("#215064")
+              .restore();
 
-        const terms = [
-          "Valid for selected products.",
-          "Redeem at authorized stores.",
-          "Cannot be exchanged for cash.",
-          "Valid until expiry date.",
-          "Damaged coupons not accepted.",
-        ];
-        terms.forEach((term, i) =>
-          doc
-            .fontSize(5)
-            .text(`${i + 1}. ${term}`, textStartX, textStartY + 34 + i * 5)
-        );
+            doc.image(logoPath, x + 5, y + 5, { width: 45, height: 13 });
 
-        doc
-          .fontSize(5)
-          .text(
-            `Code: ${coupon.CouponCode}`,
-            x + colSpacing - qrWidth - 15,
-            y + 110,
-            {
-              width: qrWidth,
-              align: "center",
+            if (coupon.qrCodeData) {
+              doc.image(
+                coupon.qrCodeData,
+                x + colSpacing - qrWidth - 15,
+                y + 30,
+                {
+                  width: qrWidth,
+                  height: qrHeight,
+                }
+              );
             }
-          );
-      } else {
-        const text = "COUPON";
-        const fontSize = 10;
-        doc.fontSize(fontSize);
 
-        const textWidth = doc.widthOfString(text) + 20;
-        const textHeight = doc.currentLineHeight() + 5;
-        const textX = x + (colSpacing - textWidth) / 2;
-        const textY = y + 100;
+            const textStartX = x + 5,
+              textStartY = y + 30;
+            doc
+              .fillColor("white")
+              .fontSize(7)
+              .text("Procedure:", textStartX, textStartY);
+            doc
+              .fontSize(5)
+              .text(
+                "To redeem your coupon, contact your",
+                textStartX,
+                textStartY + 10,
+                { width: leftWidth }
+              )
+              .text("nearest Truebond retailer.", textStartX, textStartY + 16, {
+                width: leftWidth,
+              })
+              .fontSize(7)
+              .text("Terms and Conditions:", textStartX, textStartY + 25);
 
-        doc
-          .save()
-          .rect(x, y + 22, colSpacing - 10, rowSpacing - 25)
-          .fill("white")
-          .restore();
-        doc
-          .rect(x, y + 7.3, colSpacing - 10, rowSpacing - 10.3)
-          .lineWidth(1)
-          .stroke("#215064");
-        doc
-          .roundedRect(textX - 5, textY, textWidth, textHeight, textHeight / 2)
-          .fill("#215064")
-          .restore();
-        doc.image(logoPath, x + colSpacing - qrWidth - 90, y + 30, {
-          width: 130,
-          height: 50,
-        });
-        doc.fillColor("white").text(text, textX - 5, textY + 3, {
-          width: textWidth,
-          align: "center",
-        });
+            const terms = [
+              "Valid for selected products.",
+              "Redeem at authorized stores.",
+              "Cannot be exchanged for cash.",
+              "Valid until expiry date.",
+              "Damaged coupons not accepted.",
+            ];
+            terms.forEach((term, i) =>
+              doc
+                .fontSize(5)
+                .text(`${i + 1}. ${term}`, textStartX, textStartY + 34 + i * 5)
+            );
+
+            doc
+              .fontSize(5)
+              .text(
+                `Code: ${coupon.CouponCode}`,
+                x + colSpacing - qrWidth - 15,
+                y + 110,
+                {
+                  width: qrWidth,
+                  align: "center",
+                }
+              );
+          } else if (!isDynamicPage) {
+            staticCouponIndex++;
+
+            const text = `COUPON ${Amount} RUPEES`;
+            const fontSize = 10;
+            doc.fontSize(fontSize);
+
+            const textWidth = doc.widthOfString(text) + 20;
+            const textHeight = doc.currentLineHeight() + 5;
+            const textX = x + (colSpacing - textWidth) / 2;
+            const textY = y + 100;
+
+            doc
+              .save()
+              .rect(x, y + 22, colSpacing - 10, rowSpacing - 25)
+              .fill("white")
+              .restore();
+
+            doc
+              .save()
+              .rect(x, y + 7.3, colSpacing - 10, rowSpacing - 10.3)
+              .lineWidth(1)
+              .stroke("#215064")
+              .restore();
+
+            doc
+              .save()
+              .roundedRect(
+                textX - 5,
+                textY,
+                textWidth,
+                textHeight,
+                textHeight / 2
+              )
+              .fill("#215064")
+              .restore();
+            doc.image(logoPath, x + colSpacing - qrWidth - 90, y + 30, {
+              width: 130,
+              height: 50,
+            });
+            doc.fillColor("white").text(text, textX - 5, textY + 3, {
+              width: textWidth,
+              align: "center",
+            });
+          }
+        }
       }
 
-      pdfCouponIndex++;
-
-      if (pdfCouponIndex % 1000 === 0) {
+      if (pageNum % 10 === 0 || pageNum === totalPages - 1) {
         if (global.gc) global.gc();
       }
     }
@@ -216,7 +452,7 @@ exports.createCoupon = async (req, res) => {
     stream.on("finish", () => {
       res.status(201).json({
         success: true,
-        message: "Coupons and QR Codes generated successfully.",
+        message: `Coupons and QR Codes generated successfully.`,
         pdfPath: pdfPath,
       });
     });
