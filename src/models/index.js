@@ -48,6 +48,10 @@ db.Token = require("./token.model.js")(sequelize, Sequelize);
 db.MasonSoDetail = require("./masonSoDetail.model.js")(sequelize, Sequelize);
 db.MasonSo = require("./masonSo.model.js")(sequelize, Sequelize);
 db.CouponMaster = require("./couponMaster.model.js")(sequelize, Sequelize);
+db.PurchaseOrder = require("./purchaseOrder.model.js")(sequelize, Sequelize);
+db.PurchaseOrderItem = require("./purchaseOrderItem.model.js")(sequelize, Sequelize);
+db.SalesOrder = require("./salesOrder.model.js")(sequelize, Sequelize);
+db.SalesOrderItem = require("./salesOrderItem.model.js")(sequelize, Sequelize);
 
 Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {

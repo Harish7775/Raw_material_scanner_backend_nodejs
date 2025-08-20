@@ -10,6 +10,10 @@ const Role = db.Roles;
 const Token = db.Token;
 const MasonSo = db.MasonSo;
 const MasonSoDetail = db.MasonSoDetail;
+const PurchaseOrder = db.PurchaseOrder;
+const PurchaseOrderItem = db.PurchaseOrderItem;
+const SalesOrder = db.SalesOrder;
+const SalesOrderItem = db.SalesOrderItem;
 const { Op, fn, col, literal } = require("sequelize");
 const moment = require("moment");
 const crypto = require("crypto");
@@ -76,7 +80,10 @@ exports.adminLogin = async (req, res) => {
   try {
     const { Phone, Password } = req.body;
 
-    const admin = await Users.findOne({ where: { Phone, IsActive: true } });
+    const admin = await Users.findOne({
+      where: { Phone, IsActive: true },
+      include: [{ model: Role, as: "Role" }],
+    });
 
     if (!admin) {
       return res
@@ -97,11 +104,11 @@ exports.adminLogin = async (req, res) => {
       }
     }
 
-    if (role.Name == "Mason") {
-      return res
-        .status(403)
-        .json({ success: false, message: "Access Denied..!" });
-    }
+    // if (role.Name == "Mason") {
+    //   return res
+    //     .status(403)
+    //     .json({ success: false, message: "Access Denied..!" });
+    // }
 
     const token = jwt.sign(
       { role: role.Name, email: admin.Email, id: admin.UserId },
@@ -136,8 +143,10 @@ exports.sendOtp = async (req, res) => {
         .json({ success: false, message: "User not registered..!" });
     }
 
-    if(Phone == "8008008000"){
-      return res.status(200).json({ success: true, message: "OTP sent successfully..!" });
+    if (Phone == "8008008000") {
+      return res
+        .status(200)
+        .json({ success: true, message: "OTP sent successfully..!" });
     }
 
     const apiUrl = `https://sms.smsmenow.in/generateOtp.jsp?userid=srgent&key=82cacb0ba7XX&senderid=SRGETR&mobileno=${Phone}&timetoalive=600&sms=${encodeURIComponent(
@@ -168,7 +177,7 @@ exports.verifyOtp = async (req, res) => {
   try {
     const { Phone, otp } = req.body;
 
-    if(Phone == "8008008000" && otp == "800800"){
+    if (Phone == "8008008000" && otp == "800800") {
       return res.status(200).json({
         success: true,
         message: "OTP verified successfully!",
@@ -805,9 +814,50 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+exports.getRetailerStatsSecond = async (req, res) => {
+  try {
+    const retailerId = req.user.id;
+
+    const [totalSales, totalPurchaseStock] = await Promise.all([
+      MasonSoDetail.sum("Quantity", {
+        where: {
+          CreatedBy: retailerId,
+        },
+      }),
+      SalesOrderItem.sum("Quantity", {
+        include: [
+          {
+            model: SalesOrder,
+            where: { CustomerId: retailerId },
+            include: [
+              {
+                model: PurchaseOrder,
+                where: { CreatedBy: retailerId, Status: "Delivered" },
+              },
+            ],
+          },
+        ],
+      }),
+    ]);
+
+    const response = {
+      success: true,
+      data: {
+        totalSales: totalSales || 0,
+        totalPurchaseStock: totalPurchaseStock - totalSales,
+      },
+    };
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getRetailerStats = async (req, res) => {
   try {
-    const retailerId = req.params.id;
+    const retailerId = req.user.id;
     const startDate = moment().startOf("month").toDate();
     const endDate = moment().endOf("month").toDate();
 
@@ -824,8 +874,9 @@ exports.getRetailerStats = async (req, res) => {
       billedAmount,
       paidAmount,
       scannedQRCount,
-      totalSales,
+      // totalSales,
       scannedQRAmount,
+      // totalPurchaseStock,
     ] = await Promise.all([
       LedgerEntry.sum("Amount", {
         ...ledgerQuery,
@@ -843,14 +894,14 @@ exports.getRetailerStats = async (req, res) => {
           RedeemBy: retailerId,
         },
       }),
-      MasonSoDetail.sum("Quantity", {
-        where: {
-          createdAt: {
-            [Op.between]: [startDate, endDate],
-          },
-          CreatedBy: retailerId,
-        },
-      }),
+      // MasonSoDetail.sum("Quantity", {
+      //   where: {
+      //     createdAt: {
+      //       [Op.between]: [startDate, endDate],
+      //     },
+      //     CreatedBy: retailerId,
+      //   },
+      // }),
       Coupon.sum("Amount", {
         where: {
           RedeemDateTime: {
@@ -859,6 +910,18 @@ exports.getRetailerStats = async (req, res) => {
           RedeemBy: retailerId,
         },
       }),
+      // PurchaseOrderItem.sum("Quantity", {
+      //   include: [
+      //     {
+      //       model: PurchaseOrder,
+      //       as: "PurchaseOrder",
+      //       where: {
+      //         CreatedBy: retailerId,
+      //         Status: "Delivered",
+      //       },
+      //     },
+      //   ],
+      // }),
     ]);
 
     const outstandingAmount = (billedAmount || 0) - (paidAmount || 0);
@@ -870,13 +933,53 @@ exports.getRetailerStats = async (req, res) => {
         outstandingAmount: outstandingAmount || 0,
         scannedQRAmount: scannedQRAmount || 0,
         scannedQRCount: scannedQRCount || 0,
-        totalSales: totalSales || 0,
+        // totalSales: totalSales || 0,
+        // totalPurchaseStock: totalPurchaseStock || 0,
       },
     };
 
     return res.status(200).json(response);
   } catch (error) {
     console.error(error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getMessonStats = async (req, res) => {
+  try {
+    const masonId = req.user.id;
+
+    const masonTotalRewardPoints = await MasonSo.findAll({
+      attributes: [
+        "MasonId",
+        [
+          db.Sequelize.fn("SUM", db.Sequelize.col("TotalRewardPoint")),
+          "totalRewardPoints",
+        ],
+      ],
+      where: {
+        MasonId: masonId,
+      },
+      group: ["MasonId"],
+    });
+
+    // const TotalRewardPointsMap = masonTotalRewardPoints.reduce((acc, item) => {
+    //   acc[item.MasonId] = item.getDataValue("totalRewardPoints");
+    //   return acc;
+    // }, {});
+
+    // const redeemPoints = users.rows.map((user) => {
+    //   const userJson = user.toJSON();
+    //   // userJson.redeemAmount = redeemAmountMap[user.UserId] || 0;
+    //   userJson.rewardPoints = TotalRewardPointsMap[user.UserId] || 0;
+    //   return userJson;
+    // });
+
+    return res.status(200).json({
+      success: true,
+      data: masonTotalRewardPoints,
+    });
+  } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };

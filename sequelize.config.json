@@ -1,10 +1,10 @@
 {
-    "username": "a98c7e_admin",
-    "password": "Paint@Admin@159",
-    "database": "db_a98c7e_paint",
-    "host": "mysql5035.site4now.net",
+    "username": "abc7f4_devtrub",
+    "password": "devtrubond#120",
+    "database": "db_abc7f4_devtrub",
+    "host": "mysql5047.site4now.net",
     "dialect": "mysql",
-    "logging": true,
+    "logging": false,
     "pool": {
         "max": 8,
         "min": 0,
