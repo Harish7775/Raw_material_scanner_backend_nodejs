@@ -961,6 +961,7 @@ exports.getMessonStats = async (req, res) => {
         MasonId: masonId,
       },
       group: ["MasonId"],
+      raw: true, 
     });
 
     // const TotalRewardPointsMap = masonTotalRewardPoints.reduce((acc, item) => {
@@ -975,9 +976,16 @@ exports.getMessonStats = async (req, res) => {
     //   return userJson;
     // });
 
+    let result;
+    if (masonTotalRewardPoints.length > 0) {
+      result = masonTotalRewardPoints[0];
+    } else {
+      result = { MasonId: masonId, totalRewardPoints: 0 };
+    }
+
     return res.status(200).json({
       success: true,
-      data: masonTotalRewardPoints,
+      data: result,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

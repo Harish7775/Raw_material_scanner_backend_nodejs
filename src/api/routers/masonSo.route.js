@@ -11,6 +11,6 @@ router.post('/createMasonSoDetail', validateRole(["Admin", "Retailer"]), validat
 router.get('/getAllMasonSoDetails', validateRole(["Admin", "Retailer"]), masonSoController.getAllMasonSoDetails);
 router.get('/getMasonSoDetailById/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), masonSoController.getMasonSoDetailById);
 router.get('/getTotalRewardPointsForMason/:masonId', validateRole(["Admin", "Retailer"]), validate(masonIdSchema, 'params'), masonSoController.getTotalRewardPointsForMason);
-router.get('/getRewardHistory', masonSoController.getRewardHistory);
+router.get('/getRewardHistory', validateRole(["Admin", "Mason"]), masonSoController.getRewardHistory);
 
 module.exports = router;
