@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.post('/createMasonSoDetail', validateRole(["Admin", "Retailer"]), validate(createMasonSoDetailSchema, 'body'), masonSoController.createMasonSoDetail);
 router.get('/getAllMasonSoDetails', validateRole(["Admin", "Retailer"]), masonSoController.getAllMasonSoDetails);
-router.get('/getMasonSoDetailById/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), masonSoController.getMasonSoDetailById);
+router.get('/getMasonSoDetailById/:id', validateRole(["Admin", "Mason", "Retailer"]), validate(idSchema, 'params'), masonSoController.getMasonSoDetailById);
 router.get('/getTotalRewardPointsForMason/:masonId', validateRole(["Admin", "Retailer"]), validate(masonIdSchema, 'params'), masonSoController.getTotalRewardPointsForMason);
 router.get('/getRewardHistory', validateRole(["Admin", "Mason"]), masonSoController.getRewardHistory);
 

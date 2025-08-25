@@ -2,6 +2,8 @@ const db = require("../../models");
 const MasonSoDetail = db.MasonSoDetail;
 const MasonSo = db.MasonSo;
 const Users = db.Users;
+const SalesOrder = db.SalesOrder;
+const SalesOrderItem = db.SalesOrderItem;
 const Product = db.Product;
 const LedgerEntry = db.LedgerEntry;
 const { Op, Sequelize } = require("sequelize");
@@ -52,12 +54,43 @@ exports.createMasonSoDetail = async (req, res) => {
       raw: true,
     });
 
+    const userSOunitesPerProduct = await SalesOrderItem.findAll({
+      attributes: [
+        "ProductId",
+        [
+          Sequelize.fn(
+            "COALESCE",
+            Sequelize.fn("SUM", Sequelize.col("Quantity")),
+            0
+          ),
+          "totalQuantity",
+        ],
+      ],
+      include: [
+        {
+          model: SalesOrder,
+          where: { CustomerId: req.user.id, Status: "Delivered" },
+          // attributes: [],
+        },
+      ],
+      group: ["ProductId"],
+      raw: true,
+    });
+
+    const userSOunitsMap = Object.fromEntries(
+      userSOunitesPerProduct.map((item) => [
+        item.ProductId,
+        parseFloat(item.totalQuantity) || 0,
+      ])
+    );
+
     const ledgerUnitsMap = Object.fromEntries(
       ledgerUnitsPerProduct.map((item) => [
         item.ProductId,
         parseFloat(item.totalUnits) || 0,
       ])
     );
+
     const usedMasonUnitsMap = Object.fromEntries(
       usedMasonUnitsPerProduct.map((item) => [
         item.ProductId,
@@ -68,12 +101,14 @@ exports.createMasonSoDetail = async (req, res) => {
     for (const product of products) {
       const availableUnits = ledgerUnitsMap[product.productId] || 0;
       const usedUnits = usedMasonUnitsMap[product.productId] || 0;
+      const soUnits = userSOunitsMap[product.productId] || 0;
       const newMasonQuantity = product.quantity;
 
-      if (usedUnits + newMasonQuantity > availableUnits) {
+      if (usedUnits + newMasonQuantity > availableUnits + soUnits) {
+        const remaining = availableUnits + soUnits - usedUnits;
         return res.status(400).json({
           success: false,
-          message: `You cannot allocate more units than purchased.`,
+          message: `You cannot allocate more units than purchased. Only ${remaining} units are available.`,
         });
       }
     }
