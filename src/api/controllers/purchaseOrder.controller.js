@@ -20,7 +20,7 @@ exports.createPurchaseOrder = async (req, res) => {
 
     const lastId = lastOrder ? lastOrder.PurchaseOrderId : 0;
 
-    const OrderNumber = `${currentYear}/${lastId + 1}`;
+    const OrderNumber = `${currentYear}/PO/${lastId + 1}`;
     const OrderDate = new Date();
 
     let TotalAmount = 0;
