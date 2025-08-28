@@ -54,36 +54,6 @@ exports.createMasonSoDetail = async (req, res) => {
       raw: true,
     });
 
-    const userSOunitesPerProduct = await SalesOrderItem.findAll({
-      attributes: [
-        "ProductId",
-        [
-          Sequelize.fn(
-            "COALESCE",
-            Sequelize.fn("SUM", Sequelize.col("Quantity")),
-            0
-          ),
-          "totalQuantity",
-        ],
-      ],
-      include: [
-        {
-          model: SalesOrder,
-          where: { CustomerId: req.user.id, Status: "Delivered" },
-          // attributes: [],
-        },
-      ],
-      group: ["ProductId"],
-      raw: true,
-    });
-
-    const userSOunitsMap = Object.fromEntries(
-      userSOunitesPerProduct.map((item) => [
-        item.ProductId,
-        parseFloat(item.totalQuantity) || 0,
-      ])
-    );
-
     const ledgerUnitsMap = Object.fromEntries(
       ledgerUnitsPerProduct.map((item) => [
         item.ProductId,
@@ -98,17 +68,15 @@ exports.createMasonSoDetail = async (req, res) => {
       ])
     );
 
-    for (const product of products) {
+     for (const product of products) {
       const availableUnits = ledgerUnitsMap[product.productId] || 0;
-      const usedUnits = usedMasonUnitsMap[product.productId] || 0;
-      const soUnits = userSOunitsMap[product.productId] || 0;
+      const usedUnits = usedMasonUnitsMap[product.productId] || 0;      
       const newMasonQuantity = product.quantity;
-
-      if (usedUnits + newMasonQuantity > availableUnits + soUnits) {
-        const remaining = availableUnits + soUnits - usedUnits;
+ 
+     if (usedUnits + newMasonQuantity > availableUnits) {
         return res.status(400).json({
           success: false,
-          message: `You cannot allocate more units than purchased. Only ${remaining} units are available.`,
+          message: `You cannot allocate more units than purchased.`,
         });
       }
     }
@@ -415,9 +383,9 @@ exports.getRewardHistory = async (req, res) => {
     ];
 
     let orderClause = [[orderBy, order]];
-    if (orderBy === "ProductName") {
-      orderClause = [[{ model: MasonSoDetail, as: "details" }, Product, "Name", order]];
-    }
+    // if (orderBy === "ProductName") {
+    //   orderClause = [[{ model: MasonSoDetail, as: "details" }, Product, "Name", order]];
+    // }
 
     // Fetch data
     const { rows, count } = await MasonSo.findAndCountAll({
@@ -426,7 +394,17 @@ exports.getRewardHistory = async (req, res) => {
       order: orderClause,
       offset,
       limit: parseInt(pageSize),
+      distinct: true,
+      col: "MasonSoId",
     });
+
+    if (rows.length === 0) {
+      return res.status(500).json({
+        success: false,
+        data: [],
+        message: "No Data Found",
+      });
+    }
 
     res.status(200).json({
       success: true,

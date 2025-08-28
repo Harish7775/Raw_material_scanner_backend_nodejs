@@ -685,7 +685,7 @@ exports.getRetailerDetailById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      // for app
+      // for app,,
       response: {
         ledgerEntries: ledgerEntries,
         relatedMasons: response,
@@ -991,3 +991,48 @@ exports.getMessonStats = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.getMessons = async (req, res) => {
+  try {
+    let { page, limit, sortBy = "createdAt", sortOrder = "DESC", search } =
+      req.query;
+
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const role = await Role.findOne({ where: { Name: "Mason" } });
+
+    const whereCondition = {
+      RoleId: role.RoleId,
+      IsActive: true,
+      ...(search && {
+        [Op.or]: [
+          { FirstName: { [Op.like]: `%${search}%` } },
+          { LastName: { [Op.like]: `%${search}%` } },
+          { Email: { [Op.like]: `%${search}%` } },
+          { Phone: { [Op.like]: `%${search}%` } },
+        ],
+      }),
+    };
+
+    const { count, rows } = await Users.findAndCountAll({
+      where: whereCondition,
+      limit,
+      offset,
+      order: [[sortBy, sortOrder.toUpperCase()]],
+      distinct: true,
+    });
+
+    const totalPages = Math.ceil(count / limit);
+    return res.status(200).json({
+      success: true,
+      data: rows,
+      totalPages,
+      currentPage: page,
+      totalItems: count,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
