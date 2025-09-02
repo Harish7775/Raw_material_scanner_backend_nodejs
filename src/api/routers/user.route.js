@@ -21,7 +21,8 @@ router.put('/updateUser/:id', validateRole(["Admin", "Retailer"]), validate(upda
 router.delete('/deleteUser/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), userController.deleteUser);
 router.get('/getRetailerDetailById/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), userController.getRetailerDetailById);
 router.get('/getDashboardStats', validateRole(["Admin", "Retailer"]), userController.getDashboardStats);
-router.get('/getRetailerStats/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), userController.getRetailerStats);
+router.get('/getRetailerStats', validateRole(["Admin", "Retailer"]), userController.getRetailerStats);
+router.get('/getMessonStats', validateRole(["Admin", "Mason"]), userController.getMessonStats);
 
 
 module.exports = router;

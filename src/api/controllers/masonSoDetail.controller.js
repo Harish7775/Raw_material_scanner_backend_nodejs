@@ -322,3 +322,99 @@ exports.getTotalRewardPointsForMason = async (req, res) => {
     });
   }
 };
+
+exports.getRewardHistory = async (req, res) => {
+  try {
+    const {
+      fromDate,
+      toDate,
+      search,
+      page = 1,
+      pageSize = 10,
+      orderBy = "createdAt",
+      order = "DESC",
+    } = req.query;
+    const masonId = req.user.id;
+
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+
+    const whereDetail = { MasonId: masonId };
+
+    if (fromDate || toDate) {
+      whereDetail.createdAt = {};
+      if (fromDate) {
+        whereDetail.createdAt[Op.gte] = new Date(fromDate);
+      }
+      if (toDate) {
+        whereDetail.createdAt[Op.lte] = new Date(toDate);
+      }
+    }
+
+    const whereProduct = {};
+    if (search) {
+      whereProduct.Name = { [Op.like]: `%${search}%` };
+    }
+
+    // Include conditions
+    const include = [
+      {
+        model: MasonSoDetail,
+        attributes: [
+          "Quantity",
+          "RewardPoints",
+        ],
+        as: "details",
+        include: [
+          {
+            model: Product,
+            attributes: ["Name"],
+            where: whereProduct,
+          },
+        ],
+      },
+      // {
+      //   model: Users,
+      //   as: "masonDetails",
+      //   attributes: ["UserId", "FirstName", "LastName"],
+      // },
+    ];
+
+    let orderClause = [[orderBy, order]];
+    // if (orderBy === "ProductName") {
+    //   orderClause = [[{ model: MasonSoDetail, as: "details" }, Product, "Name", order]];
+    // }
+
+    // Fetch data
+    const { rows, count } = await MasonSo.findAndCountAll({
+      where: whereDetail,
+      include,
+      order: orderClause,
+      offset,
+      limit: parseInt(pageSize),
+      distinct: true,
+      col: "MasonSoId",
+    });
+
+    if (rows.length === 0) {
+      return res.status(500).json({
+        success: false,
+        data: [],
+        message: "No Data Found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: rows,
+      pagination: {
+        totalRecords: count,
+        totalPages: Math.ceil(count / pageSize),
+        currentPage: parseInt(page),
+        pageSize: parseInt(pageSize),
+      },
+    });
+  } catch (error) {
+    console.error("Reward History Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
