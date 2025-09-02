@@ -100,12 +100,6 @@ exports.adminLogin = async (req, res) => {
       }
     }
 
-    // if (role.Name == "Mason") {
-    //   return res
-    //     .status(403)
-    //     .json({ success: false, message: "Access Denied..!" });
-    // }
-
     const token = jwt.sign(
       { role: role.Name, email: admin.Email, id: admin.UserId },
       process.env.JWT_SECRET,
@@ -902,18 +896,6 @@ exports.getMessonStats = async (req, res) => {
       group: ["MasonId"],
       raw: true, 
     });
-
-    // const TotalRewardPointsMap = masonTotalRewardPoints.reduce((acc, item) => {
-    //   acc[item.MasonId] = item.getDataValue("totalRewardPoints");
-    //   return acc;
-    // }, {});
-
-    // const redeemPoints = users.rows.map((user) => {
-    //   const userJson = user.toJSON();
-    //   // userJson.redeemAmount = redeemAmountMap[user.UserId] || 0;
-    //   userJson.rewardPoints = TotalRewardPointsMap[user.UserId] || 0;
-    //   return userJson;
-    // });
 
     let result;
     if (masonTotalRewardPoints.length > 0) {
