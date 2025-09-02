@@ -285,7 +285,6 @@ exports.getRewardHistory = async (req, res) => {
       whereProduct.Name = { [Op.like]: `%${search}%` };
     }
 
-    // Include conditions
     const include = [
       {
         model: MasonSoDetail,
@@ -302,19 +301,10 @@ exports.getRewardHistory = async (req, res) => {
           },
         ],
       },
-      // {
-      //   model: Users,
-      //   as: "masonDetails",
-      //   attributes: ["UserId", "FirstName", "LastName"],
-      // },
     ];
 
     let orderClause = [[orderBy, order]];
-    // if (orderBy === "ProductName") {
-    //   orderClause = [[{ model: MasonSoDetail, as: "details" }, Product, "Name", order]];
-    // }
 
-    // Fetch data
     const { rows, count } = await MasonSo.findAndCountAll({
       where: whereDetail,
       include,
