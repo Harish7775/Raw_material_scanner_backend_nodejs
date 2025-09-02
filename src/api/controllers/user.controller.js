@@ -76,7 +76,10 @@ exports.adminLogin = async (req, res) => {
   try {
     const { Phone, Password } = req.body;
 
-    const admin = await Users.findOne({ where: { Phone, IsActive: true } });
+    const admin = await Users.findOne({
+      where: { Phone, IsActive: true },
+      include: [{ model: Role, as: "Role" }],
+    });
 
     if (!admin) {
       return res
@@ -97,11 +100,11 @@ exports.adminLogin = async (req, res) => {
       }
     }
 
-    if (role.Name == "Mason") {
-      return res
-        .status(403)
-        .json({ success: false, message: "Access Denied..!" });
-    }
+    // if (role.Name == "Mason") {
+    //   return res
+    //     .status(403)
+    //     .json({ success: false, message: "Access Denied..!" });
+    // }
 
     const token = jwt.sign(
       { role: role.Name, email: admin.Email, id: admin.UserId },
@@ -807,7 +810,7 @@ exports.changePassword = async (req, res) => {
 
 exports.getRetailerStats = async (req, res) => {
   try {
-    const retailerId = req.params.id;
+    const retailerId = req.user.id;
     const startDate = moment().startOf("month").toDate();
     const endDate = moment().endOf("month").toDate();
 
@@ -877,6 +880,53 @@ exports.getRetailerStats = async (req, res) => {
     return res.status(200).json(response);
   } catch (error) {
     console.error(error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getMessonStats = async (req, res) => {
+  try {
+    const masonId = req.user.id;
+
+    const masonTotalRewardPoints = await MasonSo.findAll({
+      attributes: [
+        "MasonId",
+        [
+          db.Sequelize.fn("SUM", db.Sequelize.col("TotalRewardPoint")),
+          "totalRewardPoints",
+        ],
+      ],
+      where: {
+        MasonId: masonId,
+      },
+      group: ["MasonId"],
+      raw: true, 
+    });
+
+    // const TotalRewardPointsMap = masonTotalRewardPoints.reduce((acc, item) => {
+    //   acc[item.MasonId] = item.getDataValue("totalRewardPoints");
+    //   return acc;
+    // }, {});
+
+    // const redeemPoints = users.rows.map((user) => {
+    //   const userJson = user.toJSON();
+    //   // userJson.redeemAmount = redeemAmountMap[user.UserId] || 0;
+    //   userJson.rewardPoints = TotalRewardPointsMap[user.UserId] || 0;
+    //   return userJson;
+    // });
+
+    let result;
+    if (masonTotalRewardPoints.length > 0) {
+      result = masonTotalRewardPoints[0];
+    } else {
+      result = { MasonId: masonId, totalRewardPoints: 0 };
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
