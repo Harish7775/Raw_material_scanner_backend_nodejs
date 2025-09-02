@@ -1,13 +1,14 @@
 const db = require("../../models");
 const LedgerEntry = db.LedgerEntry;
 const Users = db.Users;
+const Product = db.Product;
 const { Op } = require("sequelize");
 
 exports.createLedgerEntry = async (req, res) => {
   try {
     req.body.CreatedBy = req.user.id;
     req.body.ModifiedBy = req.user.id;
-    
+
     const ledgerEntry = await LedgerEntry.create(req.body);
     return res
       .status(201)
@@ -27,7 +28,7 @@ exports.getAllLedgerEntries = async (req, res) => {
       userIds,
       fromDate,
       toDate,
-      search
+      search,
     } = req.query;
 
     const offset = (page - 1) * pageSize;
@@ -46,7 +47,10 @@ exports.getAllLedgerEntries = async (req, res) => {
       ...(fromDate &&
         toDate && {
           TransactionDate: {
-            [Op.between]: [new Date(fromDate), new Date(new Date(toDate).setHours(23, 59, 59, 999))],
+            [Op.between]: [
+              new Date(fromDate),
+              new Date(new Date(toDate).setHours(23, 59, 59, 999)),
+            ],
           },
         }),
     };
@@ -58,13 +62,17 @@ exports.getAllLedgerEntries = async (req, res) => {
         attributes: ["FirstName", "LastName"],
         where: {},
       },
+      {
+        model: Product,
+        as: "ProductDetail",
+        attributes: ["Name"],
+        // where: {},
+      },
     ];
 
     if (search) {
       includeCondition[0].where = {
-        [Op.or]: [
-          { FirstName: { [Op.like]: `%${search}%` } },
-        ],
+        [Op.or]: [{ FirstName: { [Op.like]: `%${search}%` } }],
       };
     }
 
@@ -78,22 +86,24 @@ exports.getAllLedgerEntries = async (req, res) => {
 
     let userSums = [];
     if (userIdsArray.length > 0) {
-      userSums = await Promise.all(userIdsArray.map(async (userId) => {
-        const creditSum = await LedgerEntry.sum('Amount', {
-          where: { RetailerUserId: userId, EntryType: 'Credit' }
-        });
+      userSums = await Promise.all(
+        userIdsArray.map(async (userId) => {
+          const creditSum = await LedgerEntry.sum("Amount", {
+            where: { RetailerUserId: userId, EntryType: "Credit" },
+          });
 
-        const debitSum = await LedgerEntry.sum('Amount', {
-          where: { RetailerUserId: userId, EntryType: 'Debit' }
-        });
+          const debitSum = await LedgerEntry.sum("Amount", {
+            where: { RetailerUserId: userId, EntryType: "Debit" },
+          });
 
-        return {
-          userId,
-          creditSum: creditSum || 0,
-          debitSum: debitSum || 0,
-          netAmount: (creditSum || 0) - (debitSum || 0)
-        };
-      }));
+          return {
+            userId,
+            creditSum: creditSum || 0,
+            debitSum: debitSum || 0,
+            netAmount: (creditSum || 0) - (debitSum || 0),
+          };
+        })
+      );
     }
 
     return res.status(200).json({
@@ -113,7 +123,10 @@ exports.getAllLedgerEntries = async (req, res) => {
 exports.getLedgerEntryById = async (req, res) => {
   try {
     const id = req.params.id;
-    const ledgerEntry = await LedgerEntry.findOne({ where: { LedgerId: id } });
+    const ledgerEntry = await LedgerEntry.findOne({
+      where: { LedgerId: id },
+      include: [{ model: Product, as: "ProductDetail", attributes: ["Name"] }],
+    });
 
     if (!ledgerEntry) {
       return res
@@ -130,10 +143,17 @@ exports.getLedgerEntryById = async (req, res) => {
 exports.updateLedgerEntry = async (req, res) => {
   try {
     const id = req.params.id;
-    const { EntryType, Amount, TransactionDate, Unit, PersonalNote } = req.body;
+    const {
+      EntryType,
+      Amount,
+      TransactionDate,
+      Unit,
+      PersonalNote,
+      ProductId,
+    } = req.body;
 
     const [updated] = await LedgerEntry.update(
-      { EntryType, Amount, TransactionDate, Unit, PersonalNote },
+      { EntryType, Amount, TransactionDate, Unit, PersonalNote, ProductId },
       {
         where: { LedgerId: id },
       }
@@ -179,7 +199,7 @@ exports.getLedgerEntryByUserId = async (req, res) => {
     const id = req.params.id;
     const ledgerEntryByUser = await LedgerEntry.findAll({
       where: { RetailerUserId: id },
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
     });
 
     if (!ledgerEntryByUser) {
@@ -188,12 +208,12 @@ exports.getLedgerEntryByUserId = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    const creditSum = await LedgerEntry.sum('Amount', {
-      where: { RetailerUserId: id, EntryType: 'Credit' }
+    const creditSum = await LedgerEntry.sum("Amount", {
+      where: { RetailerUserId: id, EntryType: "Credit" },
     });
-    
-    const debitSum = await LedgerEntry.sum('Amount', {
-      where: { RetailerUserId: id, EntryType: 'Debit' }
+
+    const debitSum = await LedgerEntry.sum("Amount", {
+      where: { RetailerUserId: id, EntryType: "Debit" },
     });
 
     const total = (creditSum || 0) - (debitSum || 0);
