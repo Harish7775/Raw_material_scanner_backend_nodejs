@@ -49,12 +49,12 @@ module.exports = (sequelize, Sequelize) => {
     {
       timestamps: true,
       paranoid: true,
-      indexes: [
-        {
-          unique: true,
-          fields: ["Phone"],
-        },
-      ],
+      // indexes: [
+      //   {
+      //     unique: true,
+      //     fields: ["Phone"],
+      //   },
+      // ],
     }
   );
 
