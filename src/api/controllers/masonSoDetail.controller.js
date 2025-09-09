@@ -259,6 +259,11 @@ exports.getMasonSoDetailById = async (req, res) => {
             },
           ],
         },
+        {
+          model: Users,
+          as: "creator",
+          attributes: ["FirstName", "LastName"],
+        }
       ],
     });
 
@@ -375,11 +380,11 @@ exports.getRewardHistory = async (req, res) => {
           },
         ],
       },
-      // {
-      //   model: Users,
-      //   as: "masonDetails",
-      //   attributes: ["UserId", "FirstName", "LastName"],
-      // },
+      {
+        model: Users,
+        as: "creator",
+        attributes: ["FirstName", "LastName"],
+      }
     ];
 
     let orderClause = [[orderBy, order]];
