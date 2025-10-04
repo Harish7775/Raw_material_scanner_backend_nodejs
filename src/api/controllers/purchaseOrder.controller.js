@@ -95,17 +95,11 @@ exports.getPurchaseOrders = async (req, res) => {
 
     // Date filtering
     if (fromDate && toDate) {
-      where.OrderDate = {
-        [Op.between]: [new Date(fromDate), new Date(toDate)],
-      };
+      where.OrderDate = { [Op.between]: [new Date(fromDate), new Date(toDate)] };
     } else if (fromDate) {
-      where.OrderDate = {
-        [Op.gte]: new Date(fromDate),
-      };
+      where.OrderDate = { [Op.gte]: new Date(fromDate) };
     } else if (toDate) {
-      where.OrderDate = {
-        [Op.lte]: new Date(toDate),
-      };
+      where.OrderDate = { [Op.lte]: new Date(toDate) };
     }
 
     if (retailer) {
@@ -116,56 +110,44 @@ exports.getPurchaseOrders = async (req, res) => {
       where.Status = status;
     }
 
-    // Search functionality - will be added separately
-    let searchCondition = null;
+    // Search only by OrderNumber
     if (search) {
-      searchCondition = {
-        [Op.or]: [
-          { OrderNumber: { [Op.iLike]: `%${search}%` } },
-          { "$items.Product.Name$": { [Op.iLike]: `%${search}%` } },
-        ],
-      };
+      where.OrderNumber = { [Op.like]: `%${search}%` };
     }
 
-    // Combine conditions
-    const finalWhere = searchCondition
-      ? { [Op.and]: [where, searchCondition] }
-      : where;
-
-    const { count, rows: purchaseOrders } = await PurchaseOrder.findAndCountAll(
-      {
-        where: finalWhere,
-        include: [
-          {
-            model: PurchaseOrderItem,
-            as: "items",
-            required: false,
-            include: [
-              {
-                model: Product,
-                attributes: ["Name"],
-                required: false,
-              },
-            ],
-          },
-          {
-            model: Users,
-            attributes: ["FirstName", "LastName"],
-          },
-          {
-            model: SalesOrder,
-            as: "SalesOrder",
-            attributes: ["SalesOrderId", "OrderNumber", "OrderDate", "TotalAmount"],
-            required: false,
-          },
-        ],
-        order: [[orderBy, order]],
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        distinct: true,
-        subQuery: false, // Important for complex queries
-      }
-    );
+    const { count, rows: purchaseOrders } = await PurchaseOrder.findAndCountAll({
+      where,
+      include: [
+        {
+          model: PurchaseOrderItem,
+          as: "items",
+          separate: true,
+          required: false,
+          include: [
+            {
+              model: Product,
+              attributes: ["Name"],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: Users,
+          attributes: ["FirstName", "LastName"],
+        },
+        {
+          model: SalesOrder,
+          as: "SalesOrder",
+          attributes: ["SalesOrderId", "OrderNumber", "OrderDate", "TotalAmount"],
+          required: false,
+        },
+      ],
+      order: [[orderBy, order]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      distinct: true,
+      subQuery: false,
+    });
 
     const purchaseOrdersWithItemCount = purchaseOrders.map((po) => ({
       ...po.toJSON(),
@@ -247,6 +229,7 @@ exports.getPurchaseOrdersHistory = async (req, res) => {
       CreatedBy,
     };
 
+    // Date filtering
     if (fromDate && toDate) {
       whereCondition.OrderDate = {
         [Op.between]: [new Date(fromDate), new Date(toDate)],
@@ -261,22 +244,22 @@ exports.getPurchaseOrdersHistory = async (req, res) => {
       };
     }
 
+    // Search only by OrderNumber
+    if (search) {
+      whereCondition.OrderNumber = { [Op.like]: `%${search}%` };
+    }
+
     const purchaseOrders = await PurchaseOrder.findAndCountAll({
+      where: whereCondition,
       include: [
         {
           model: PurchaseOrderItem,
           as: "items",
+          separate: true,
           include: [
             {
               model: Product,
               attributes: ["Name"],
-              where: search
-                ? {
-                    Name: {
-                      [Op.like]: `%${search}%`,
-                    },
-                  }
-                : undefined,
             },
           ],
         },
@@ -287,11 +270,11 @@ exports.getPurchaseOrdersHistory = async (req, res) => {
           required: false,
         },
       ],
-      where: whereCondition,
       order: [[orderBy, order]],
       offset,
       limit: parseInt(limit),
       distinct: true,
+      subQuery: false,
     });
 
     return res.status(200).json({

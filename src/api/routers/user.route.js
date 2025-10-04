@@ -11,6 +11,7 @@ const router = express.Router();
 router.post('/addUser', validateRole(["Admin", "Retailer"]), validate(createUserSchema, "body"), userController.createUser);
 router.post('/adminLogin',validate(loginSchema, "body"), userController.adminLogin);
 router.post('/sendOtp', userController.sendOtp);
+router.post('/restoreAccount', userController.restoreAccount);
 router.post('/verifyOtp', userController.verifyOtp);
 router.post('/forgetPassword', userController.forgetPassword);
 router.post('/changePassword', userController.changePassword);
