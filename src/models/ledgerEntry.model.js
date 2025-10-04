@@ -33,6 +33,11 @@ module.exports = (sequelize, Sequelize) => {
       },
       ProductId: {
         type: Sequelize.INTEGER,
+        allowNull: true,
+      },
+      SalesOrderId: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
       },
       CreatedBy: {
         type: Sequelize.INTEGER,
@@ -61,6 +66,12 @@ module.exports = (sequelize, Sequelize) => {
       targetKey: "ProductId",
       constraints: true,
       as: "ProductDetail",
+    });
+    LedgerEntry.belongsTo(models.SalesOrder, {
+      foreignKey: "SalesOrderId",
+      targetKey: "SalesOrderId",
+      constraints: true,
+      as: "SODetail",
     });
     LedgerEntry.belongsTo(models.Users, {
       foreignKey: "CreatedBy",

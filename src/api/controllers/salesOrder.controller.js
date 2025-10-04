@@ -5,6 +5,7 @@ const PurchaseOrder = db.PurchaseOrder;
 const { Op } = require("sequelize");
 const Product = db.Product;
 const Users = db.Users;
+const LedgerEntry = db.LedgerEntry;
 
 exports.createSalesOrder = async (req, res) => {
   try {
@@ -30,7 +31,7 @@ exports.createSalesOrder = async (req, res) => {
       OrderNumber,
       CustomerId,
       OrderDate,
-      // TotalAmount,
+      TotalAmount,
       //   Status,
       CreatedBy,
       PurchaseOrderId,
@@ -83,26 +84,28 @@ exports.getSalesOrders = async (req, res) => {
 
     let where = {};
 
+    // Date filtering
     if (fromDate && toDate) {
-      where.OrderDate = { [Op.between]: [fromDate, toDate] };
+      where.OrderDate = { [Op.between]: [new Date(fromDate), new Date(toDate)] };
     } else if (fromDate) {
-      where.OrderDate = { [Op.gte]: fromDate };
+      where.OrderDate = { [Op.gte]: new Date(fromDate) };
     } else if (toDate) {
-      where.OrderDate = { [Op.lte]: toDate };
+      where.OrderDate = { [Op.lte]: new Date(toDate) };
     }
 
+    // Filter by retailer
     if (retailer) {
       where.CustomerId = retailer;
     }
 
+    // Filter by status
     if (status) {
       where.Status = status;
     }
 
+    // Search by OrderNumber only
     if (search) {
-      where[Op.or] = [
-        { OrderNumber: { [Op.like]: `%${search}%` } },
-      ];
+      where.OrderNumber = { [Op.like]: `%${search}%` };
     }
 
     const { count, rows: salesOrders } = await SalesOrder.findAndCountAll({
@@ -122,6 +125,7 @@ exports.getSalesOrders = async (req, res) => {
         {
           model: SalesOrderItem,
           as: "items",
+          separate: true,
           required: false,
           include: [
             {
@@ -135,7 +139,8 @@ exports.getSalesOrders = async (req, res) => {
       order: [[sortBy, order]],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      distinct: true,
+      distinct: true, // needed because of the include
+      subQuery: false, // ensures proper pagination
     });
 
     res.status(200).json({
@@ -204,6 +209,16 @@ exports.updateSalesOrder = async (req, res) => {
     }
     salesOrder.Status = Status;
     await salesOrder.save();
+
+    if(Status === "Delivered"){
+      const ledgerEntry = await LedgerEntry.create({
+        EntryType: "Debit",
+        Amount: salesOrder.TotalAmount,
+        RetailerUserId: salesOrder.CustomerId,
+        TransactionDate: new Date(),
+        SalesOrderId: salesOrder.SalesOrderId
+      })
+    }
        
     res.status(200).json({
       success: true,
@@ -270,8 +285,10 @@ exports.getSalesOrdersByCustomer = async (req, res) => {
     limit = parseInt(limit);
     const offset = (page - 1) * limit;
 
+    // Base where clause
     let whereClause = { CustomerId: userId };
 
+    // Date filtering
     if (fromDate && toDate) {
       whereClause.createdAt = {
         [Op.between]: [new Date(fromDate), new Date(toDate)],
@@ -282,36 +299,18 @@ exports.getSalesOrdersByCustomer = async (req, res) => {
       whereClause.createdAt = { [Op.lte]: new Date(toDate) };
     }
 
-    if(status) {
+    // Status filter
+    if (status) {
       whereClause.Status = status;
     }
 
-    let itemInclude = {
-      model: SalesOrderItem,
-      as: "items",
-      include: [
-        {
-          model: Product,
-          as: "Product",
-          attributes: ["ProductId", "Name"],
-          // where: search
-          //   ? {
-          //       Name: { [Op.like]: `%${search}%` },
-          //     }
-          //   : undefined,
-        },
-      ],
-    };
+    // Search by OrderNumber only
+    if (search) {
+      whereClause.OrderNumber = { [Op.like]: `%${search}%` };
+    }
 
     const { count, rows } = await SalesOrder.findAndCountAll({
-      where: {
-        ...whereClause,
-        ...(search
-          ? {
-              OrderNumber: { [Op.like]: `%${search}%` },
-            }
-          : {}),
-      },
+      where: whereClause,
       include: [
         {
           model: Users,
@@ -322,12 +321,24 @@ exports.getSalesOrdersByCustomer = async (req, res) => {
           model: PurchaseOrder,
           attributes: ["PurchaseOrderId", "OrderNumber", "Status"],
         },
-        itemInclude,
+        {
+          model: SalesOrderItem,
+          as: "items",
+          separate: true,
+          include: [
+            {
+              model: Product,
+              as: "Product",
+              attributes: ["ProductId", "Name"],
+            },
+          ],
+        },
       ],
       order: [[sortBy, sortOrder]],
       limit,
       offset,
-      distinct: true,
+      distinct: true, // ensures correct pagination with includes
+      subQuery: false,
     });
 
     res.status(200).json({
@@ -341,3 +352,4 @@ exports.getSalesOrdersByCustomer = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

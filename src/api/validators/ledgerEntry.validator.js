@@ -4,11 +4,12 @@ const createLedgerEntrySchema = Joi.object().keys({
   EntryType: Joi.string().valid("Credit", "Debit").required(),
   Amount: Joi.number().required().error(new Error("Amout is required..!")),
   Note: Joi.string().allow(""),
-  RetailerUserId: Joi.number().required().error(new Error("Id is inValid")),
+  RetailerUserId: Joi.number().required().error(new Error("Retailer Id is inValid")),
   TransactionDate: Joi.date().optional(),
   Unit: Joi.number().optional(),
   PersonalNote: Joi.string().optional().allow(""),
-  ProductId: Joi.number().required().error(new Error("Id is inValid")),
+  ProductId: Joi.number().optional().allow(null),
+  SalesOrderId: Joi.number().optional().allow(null),
 });
 
 const updateLedgerEntrySchema = Joi.object().keys({

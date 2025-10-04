@@ -135,7 +135,9 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
-    const user = await Users.findOne({ where: { Phone, IsActive: true } });
+    const user = await Users.findOne({ where: { Phone }, paranoid: false, });
+
+    console.log("user", user)
 
     if (!user) {
       return res
@@ -143,10 +145,61 @@ exports.sendOtp = async (req, res) => {
         .json({ success: false, message: "User not registered..!" });
     }
 
+    if (user.deletedAt) {
+      return res.status(404).json({
+        success: false,
+        message: "This account has been deleted. You can restore it to regain access..!",
+      });
+    }
+
+    if (!user.IsActive) {
+      return res.status(404).json({
+        success: false,
+        message: "Your account is currently deactivated. Please contact the administrator for assistance..!",
+      });
+    }
+
     if (Phone == "8008008000") {
       return res
         .status(200)
         .json({ success: true, message: "OTP sent successfully..!" });
+    }
+
+    const apiUrl = `https://sms.smsmenow.in/generateOtp.jsp?userid=srgent&key=82cacb0ba7XX&senderid=SRGETR&mobileno=${Phone}&timetoalive=600&sms=${encodeURIComponent(
+      otpTemplate
+    )}&tempid=1707172925498471180`;
+
+    const response = await axios.get(apiUrl);
+
+    if (response.status === 200) {
+      console.log("OTP sent response: ", response.data);
+      return res.status(200).json({ success: true, data: response.data });
+    } else {
+      return res.status(response.status).json({
+        success: false,
+        message: `Failed to send OTP. Status code: ${response.status}`,
+      });
+    }
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error while sending OTP",
+    });
+  }
+};
+
+exports.restoreAccount = async (req, res) => {
+  try {
+    const { Phone } = req.body;
+
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(Phone)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid phone number format. Please enter a 10-digit phone number.",
+      });
     }
 
     const apiUrl = `https://sms.smsmenow.in/generateOtp.jsp?userid=srgent&key=82cacb0ba7XX&senderid=SRGETR&mobileno=${Phone}&timetoalive=600&sms=${encodeURIComponent(
@@ -189,11 +242,24 @@ exports.verifyOtp = async (req, res) => {
     const response = await axios.get(apiUrl);
 
     if (response.status === 200 && response.data.result === "success") {
-      console.log("OTP verified successfully:", response.data);
-      return res.status(200).json({
-        success: true,
-        message: "OTP verified successfully!",
+      const user = await Users.findOne({
+        where: { Phone: Phone },
+        paranoid: false,
       });
+
+      if (user && user.deletedAt) {
+        await user.restore();
+        return res.status(200).json({
+          success: true,
+          message: "User restored successfully.",
+          data: user,
+        });
+      } else {
+        return res.status(200).json({
+          success: true,
+          message: "OTP verified successfully!",
+        });
+      }
     }
 
     return res.status(400).json({
@@ -818,7 +884,7 @@ exports.getRetailerStatsSecond = async (req, res) => {
   try {
     const retailerId = req.user.id;
 
-    const [totalSales, totalPurchaseStock] = await Promise.all([
+    const [totalSales, totalPurchaseStock, totalPurchaseEntry] = await Promise.all([
       MasonSoDetail.sum("Quantity", {
         where: {
           CreatedBy: retailerId,
@@ -828,23 +894,28 @@ exports.getRetailerStatsSecond = async (req, res) => {
         include: [
           {
             model: SalesOrder,
-            where: { CustomerId: retailerId },
+            where: { CustomerId: retailerId, Status: "Delivered" },
             include: [
               {
                 model: PurchaseOrder,
-                where: { CreatedBy: retailerId, Status: "Delivered" },
+                where: { CreatedBy: retailerId, Status: "Accepted" },
               },
             ],
           },
         ],
       }),
+      LedgerEntry.sum("Unit", {
+        where: { RetailerUserId: retailerId, EntryType: "Debit" },
+      }),
     ]);
+
+    let buyingstock =  (totalPurchaseStock || 0) + (totalPurchaseEntry || 0);
 
     const response = {
       success: true,
       data: {
         totalSales: totalSales || 0,
-        totalPurchaseStock: totalPurchaseStock - totalSales,
+        totalPurchaseStock: buyingstock - totalSales,
       },
     };
 
@@ -961,7 +1032,7 @@ exports.getMessonStats = async (req, res) => {
         MasonId: masonId,
       },
       group: ["MasonId"],
-      raw: true, 
+      raw: true,
     });
 
     // const TotalRewardPointsMap = masonTotalRewardPoints.reduce((acc, item) => {
@@ -994,8 +1065,13 @@ exports.getMessonStats = async (req, res) => {
 
 exports.getMessons = async (req, res) => {
   try {
-    let { page, limit, sortBy = "createdAt", sortOrder = "DESC", search } =
-      req.query;
+    let {
+      page,
+      limit,
+      sortBy = "createdAt",
+      sortOrder = "DESC",
+      search,
+    } = req.query;
 
     page = parseInt(page) || 1;
     limit = parseInt(limit) || 10;
@@ -1035,4 +1111,4 @@ exports.getMessons = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
-}
+};
