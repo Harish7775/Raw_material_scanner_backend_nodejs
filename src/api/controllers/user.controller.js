@@ -135,9 +135,11 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
-    const user = await Users.findOne({ where: { Phone }, paranoid: false, });
-
-    console.log("user", user)
+    const user = await Users.findOne({
+      where: { Phone },
+      paranoid: false,
+      include: [{ model: Role, as: "Role" }],
+    });
 
     if (!user) {
       return res
@@ -145,17 +147,19 @@ exports.sendOtp = async (req, res) => {
         .json({ success: false, message: "User not registered..!" });
     }
 
-    if (user.deletedAt) {
-      return res.status(404).json({
-        success: false,
-        message: "This account has been deleted. You can restore it to regain access..!",
-      });
-    }
-
     if (!user.IsActive) {
       return res.status(404).json({
         success: false,
-        message: "Your account is currently deactivated. Please contact the administrator for assistance..!",
+        message:
+          "Your account is currently deactivated. Please contact the administrator for assistance..!",
+      });
+    }
+
+    if (user.deletedAt && user.IsActive) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "This account has been deleted. You can restore it to regain access..!",
       });
     }
 
@@ -247,7 +251,7 @@ exports.verifyOtp = async (req, res) => {
         paranoid: false,
       });
 
-      if (user && user.deletedAt) {
+      if (user && user.deletedAt && user.IsActive) {
         await user.restore();
         return res.status(200).json({
           success: true,
@@ -884,32 +888,33 @@ exports.getRetailerStatsSecond = async (req, res) => {
   try {
     const retailerId = req.user.id;
 
-    const [totalSales, totalPurchaseStock, totalPurchaseEntry] = await Promise.all([
-      MasonSoDetail.sum("Quantity", {
-        where: {
-          CreatedBy: retailerId,
-        },
-      }),
-      SalesOrderItem.sum("Quantity", {
-        include: [
-          {
-            model: SalesOrder,
-            where: { CustomerId: retailerId, Status: "Delivered" },
-            include: [
-              {
-                model: PurchaseOrder,
-                where: { CreatedBy: retailerId, Status: "Accepted" },
-              },
-            ],
+    const [totalSales, totalPurchaseStock, totalPurchaseEntry] =
+      await Promise.all([
+        MasonSoDetail.sum("Quantity", {
+          where: {
+            CreatedBy: retailerId,
           },
-        ],
-      }),
-      LedgerEntry.sum("Unit", {
-        where: { RetailerUserId: retailerId, EntryType: "Debit" },
-      }),
-    ]);
+        }),
+        SalesOrderItem.sum("Quantity", {
+          include: [
+            {
+              model: SalesOrder,
+              where: { CustomerId: retailerId, Status: "Delivered" },
+              include: [
+                {
+                  model: PurchaseOrder,
+                  where: { CreatedBy: retailerId, Status: "Accepted" },
+                },
+              ],
+            },
+          ],
+        }),
+        LedgerEntry.sum("Unit", {
+          where: { RetailerUserId: retailerId, EntryType: "Debit" },
+        }),
+      ]);
 
-    let buyingstock =  (totalPurchaseStock || 0) + (totalPurchaseEntry || 0);
+    let buyingstock = (totalPurchaseStock || 0) + (totalPurchaseEntry || 0);
 
     const response = {
       success: true,
@@ -1065,50 +1070,96 @@ exports.getMessonStats = async (req, res) => {
 
 exports.getMessons = async (req, res) => {
   try {
-    let {
-      page,
-      limit,
-      sortBy = "createdAt",
-      sortOrder = "DESC",
-      search,
-    } = req.query;
+    let { page, limit, sortBy = "createdAt", sortOrder = "DESC", search } = req.query;
 
+    const retailerId = req.user?.id;
     page = parseInt(page) || 1;
     limit = parseInt(limit) || 10;
     const offset = (page - 1) * limit;
 
     const role = await Role.findOne({ where: { Name: "Mason" } });
+    if (!role) {
+      return res.status(404).json({ success: false, message: "Mason role not found." });
+    }
 
-    const whereCondition = {
+    // Ledger entries
+    const ledgerEntries = await LedgerEntry.findAll({
+      where: { RetailerUserId: retailerId },
+      include: [
+        {
+          model: Users,
+          as: "UserDetail",
+          attributes: ["FirstName", "LastName"],
+        },
+      ],
+    });
+
+    // Mason filtering
+    const masonWhereCondition = {
       RoleId: role.RoleId,
       IsActive: true,
       ...(search && {
         [Op.or]: [
           { FirstName: { [Op.like]: `%${search}%` } },
           { LastName: { [Op.like]: `%${search}%` } },
-          { Email: { [Op.like]: `%${search}%` } },
-          { Phone: { [Op.like]: `%${search}%` } },
         ],
       }),
     };
 
-    const { count, rows } = await Users.findAndCountAll({
-      where: whereCondition,
+    // Count total records
+    const totalItems = await Users.count({ where: masonWhereCondition });
+
+    // Get related masons with aggregation
+    const relatedMasons = await Users.findAll({
+      subQuery: false,
+      where: masonWhereCondition,
+      include: [
+        {
+          model: MasonSo,
+          as: "MasonSoDetail",
+          attributes: [],
+        },
+      ],
+      attributes: {
+        include: [
+          [
+            fn("COALESCE", fn("SUM", col("MasonSoDetail.TotalRewardPoint")), 0),
+            "totalRewardPoints",
+          ],
+        ],
+      },
+      group: ["Users.UserId"],
+      order: [[sortBy, sortOrder.toUpperCase()]],
       limit,
       offset,
-      order: [[sortBy, sortOrder.toUpperCase()]],
-      distinct: true,
     });
 
-    const totalPages = Math.ceil(count / limit);
+    const response = relatedMasons.map((mason) => ({
+      UserId: mason.UserId,
+      FirstName: mason.FirstName,
+      LastName: mason.LastName,
+      Email: mason.Email,
+      Phone: mason.Phone,
+      totalRewardPoints: mason.getDataValue("totalRewardPoints") || 0,
+    }));
+
+    const totalPages = Math.ceil(totalItems / limit);
+
     return res.status(200).json({
       success: true,
-      data: rows,
-      totalPages,
-      currentPage: page,
-      totalItems: count,
+      response: {
+        ledgerEntries,
+        Masons: response,
+        pagination: {
+          totalItems,
+          totalPages,
+          currentPage: page,
+          pageSize: limit,
+        },
+      },
     });
   } catch (error) {
+    console.error("Error in getMessons:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
