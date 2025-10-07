@@ -19,11 +19,11 @@ const createUserSchema = Joi.object().keys({
 
 const updateUserSchema = Joi.object().keys({
   FirstName: Joi.string(),
-  LastName: Joi.string(),
+  LastName: Joi.string().optional().allow(""),
   Email: Joi.string().email().optional().allow(""),
   ShopName: Joi.string().optional().allow(""),
   Address: Joi.string().optional().allow(""),
-  Password: Joi.string(),
+  // Password: Joi.string(),
   IsActive: Joi.boolean(),
 });
 
