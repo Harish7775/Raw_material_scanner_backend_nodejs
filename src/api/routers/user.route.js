@@ -26,6 +26,7 @@ router.get('/getRetailerStats', validateRole(["Admin", "Retailer"]), userControl
 router.get('/getRetailerStatsSecond', validateRole(["Admin", "Retailer"]), userController.getRetailerStatsSecond);
 router.get('/getMessonStats', validateRole(["Admin", "Mason"]), userController.getMessonStats);
 router.get('/getMessons', validateRole(["Admin", "Retailer"]), userController.getMessons);
+router.get('/getUserExists', validateRole(["Admin"]), userController.getUserExists);
 
 
 module.exports = router;

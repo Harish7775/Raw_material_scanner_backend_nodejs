@@ -50,16 +50,16 @@ exports.createUser = async (req, res) => {
     return res.status(200).send({ success: true, data });
   } catch (err) {
     console.error("Error creating user:", err);
-    if (err.name === "SequelizeUniqueConstraintError") {
-      const errors = err.errors.map((error) => error.message);
-      if (err.errors[0].path === "Phone") {
-        return res.status(400).send({
-          success: false,
-          message:
-            "Phone number already exists. Please use a different phone number.",
-          errors,
-        });
-      }
+    if (
+      err.name === "SequelizeUniqueConstraintError" &&
+      err.errors.some((e) => e.path.toLowerCase().includes("phone"))
+    ) {
+      return res.status(400).send({
+        success: false,
+        message:
+          "This phone number is already registered. Please use a different phone number.",
+        errors: err.errors.map((error) => error.message),
+      });
     } else if (err.name === "SequelizeValidationError") {
       const errors = err.errors.map((error) => error.message);
       return res.status(400).send({
@@ -517,21 +517,52 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+exports.getUserExists = async (req, res) => {
   try {
-    const user = await Users.findByPk(req.params.id);
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-    req.body.ModifiedBy = req.user.id;
-    await user.update(req.body);
-    return res.status(200).json({ success: true, user });
+    const { Phone } = req.query;
+    console.log("Phone", Phone);
+    const user = await Users.findOne({ where: { Phone }, paranoid: false });
+    console.log("user", user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Existing User Fetch Successfully..!",
+      user: user,
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.updateUser = async (req, res) => {
+  try {
+    const user = await Users.findByPk(req.params.id, { paranoid: false });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    req.body.ModifiedBy = req.user.id;
+
+    if (user.deletedAt && user.IsActive) {
+      await user.restore();
+    }
+
+    await user.update(req.body);
+
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError" &&
+        error.errors.some(e => e.path.toLowerCase().includes("phone"))) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number already exists. Please use a different phone number.",
+        errors: error.errors.map(e => e.message),
+      });
+    }
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 exports.deleteUser = async (req, res) => {
   try {
@@ -1070,7 +1101,13 @@ exports.getMessonStats = async (req, res) => {
 
 exports.getMessons = async (req, res) => {
   try {
-    let { page, limit, sortBy = "createdAt", sortOrder = "DESC", search } = req.query;
+    let {
+      page,
+      limit,
+      sortBy = "createdAt",
+      sortOrder = "DESC",
+      search,
+    } = req.query;
 
     const retailerId = req.user?.id;
     page = parseInt(page) || 1;
@@ -1079,7 +1116,9 @@ exports.getMessons = async (req, res) => {
 
     const role = await Role.findOne({ where: { Name: "Mason" } });
     if (!role) {
-      return res.status(404).json({ success: false, message: "Mason role not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Mason role not found." });
     }
 
     // Ledger entries

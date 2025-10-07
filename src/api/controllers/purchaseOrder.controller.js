@@ -224,12 +224,10 @@ exports.getPurchaseOrdersHistory = async (req, res) => {
 
     const offset = (page - 1) * limit;
 
-    // Build dynamic conditions
     const whereCondition = {
       CreatedBy,
     };
 
-    // Date filtering
     if (fromDate && toDate) {
       whereCondition.OrderDate = {
         [Op.between]: [new Date(fromDate), new Date(toDate)],
@@ -244,22 +242,87 @@ exports.getPurchaseOrdersHistory = async (req, res) => {
       };
     }
 
-    // Search only by OrderNumber
+    let purchaseOrderIdsFromProductSearch = [];
+    
     if (search) {
-      whereCondition.OrderNumber = { [Op.like]: `%${search}%` };
+      const matchingProducts = await Product.findAll({
+        where: {
+          Name: { [Op.like]: `%${search}%` }
+        },
+        attributes: ['ProductId'],
+        raw: true
+      });
+
+      if (matchingProducts.length > 0) {
+        const productIds = matchingProducts.map(product => product.ProductId);
+        
+        const purchaseOrderItems = await PurchaseOrderItem.findAll({
+          where: {
+            ProductId: { [Op.in]: productIds }
+          },
+          attributes: ['PurchaseOrderId'],
+          raw: true
+        });
+
+        purchaseOrderIdsFromProductSearch = purchaseOrderItems.map(item => item.PurchaseOrderId);
+      }
     }
 
-    const purchaseOrders = await PurchaseOrder.findAndCountAll({
-      where: whereCondition,
+    let finalWhere = whereCondition;
+
+    if (search) {
+      finalWhere = {
+        [Op.and]: [
+          whereCondition,
+          {
+            [Op.or]: [
+              { OrderNumber: { [Op.like]: `%${search}%` } },
+              ...(purchaseOrderIdsFromProductSearch.length > 0 
+                ? [{ PurchaseOrderId: { [Op.in]: purchaseOrderIdsFromProductSearch } }]
+                : [])
+            ]
+          }
+        ]
+      };
+
+      if (purchaseOrderIdsFromProductSearch.length === 0) {
+        const orderNumberCount = await PurchaseOrder.count({
+          where: {
+            ...whereCondition,
+            OrderNumber: { [Op.like]: `%${search}%` }
+          }
+        });
+
+        if (orderNumberCount === 0) {
+          return res.status(200).json({
+            success: true,
+            total: 0,
+            page: parseInt(page),
+            pages: 0,
+            data: [],
+          });
+        }
+      }
+    }
+
+    const totalCount = await PurchaseOrder.count({
+      where: finalWhere,
+      distinct: true,
+      col: 'PurchaseOrderId'
+    });
+
+    const purchaseOrders = await PurchaseOrder.findAll({
+      where: finalWhere,
       include: [
         {
           model: PurchaseOrderItem,
           as: "items",
-          separate: true,
+          required: false,
           include: [
             {
               model: Product,
               attributes: ["Name"],
+              required: false,
             },
           ],
         },
@@ -273,16 +336,14 @@ exports.getPurchaseOrdersHistory = async (req, res) => {
       order: [[orderBy, order]],
       offset,
       limit: parseInt(limit),
-      distinct: true,
-      subQuery: false,
     });
 
     return res.status(200).json({
       success: true,
-      total: purchaseOrders.count,
+      total: totalCount,
       page: parseInt(page),
-      pages: Math.ceil(purchaseOrders.count / limit),
-      data: purchaseOrders.rows,
+      pages: Math.ceil(totalCount / limit),
+      data: purchaseOrders,
     });
   } catch (error) {
     return res.status(500).json({

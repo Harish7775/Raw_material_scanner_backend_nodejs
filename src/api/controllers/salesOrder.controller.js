@@ -285,10 +285,8 @@ exports.getSalesOrdersByCustomer = async (req, res) => {
     limit = parseInt(limit);
     const offset = (page - 1) * limit;
 
-    // Base where clause
     let whereClause = { CustomerId: userId };
 
-    // Date filtering
     if (fromDate && toDate) {
       whereClause.createdAt = {
         [Op.between]: [new Date(fromDate), new Date(toDate)],
@@ -299,18 +297,81 @@ exports.getSalesOrdersByCustomer = async (req, res) => {
       whereClause.createdAt = { [Op.lte]: new Date(toDate) };
     }
 
-    // Status filter
     if (status) {
       whereClause.Status = status;
     }
 
-    // Search by OrderNumber only
+    let salesOrderIdsFromProductSearch = [];
+
     if (search) {
-      whereClause.OrderNumber = { [Op.like]: `%${search}%` };
+      const matchingProducts = await Product.findAll({
+        where: {
+          Name: { [Op.like]: `%${search}%` }
+        },
+        attributes: ['ProductId'],
+        raw: true
+      });
+
+      if (matchingProducts.length > 0) {
+        const productIds = matchingProducts.map(product => product.ProductId);
+        
+        const salesOrderItems = await SalesOrderItem.findAll({
+          where: {
+            ProductId: { [Op.in]: productIds }
+          },
+          attributes: ['SalesOrderId'],
+          raw: true
+        });
+
+        salesOrderIdsFromProductSearch = salesOrderItems.map(item => item.SalesOrderId);
+      }
     }
 
-    const { count, rows } = await SalesOrder.findAndCountAll({
-      where: whereClause,
+    let finalWhere = whereClause;
+
+    if (search) {
+      finalWhere = {
+        [Op.and]: [
+          whereClause,
+          {
+            [Op.or]: [
+              { OrderNumber: { [Op.like]: `%${search}%` } },
+              ...(salesOrderIdsFromProductSearch.length > 0 
+                ? [{ SalesOrderId: { [Op.in]: salesOrderIdsFromProductSearch } }]
+                : [])
+            ]
+          }
+        ]
+      };
+
+      if (salesOrderIdsFromProductSearch.length === 0) {
+        const orderNumberCount = await SalesOrder.count({
+          where: {
+            ...whereClause,
+            OrderNumber: { [Op.like]: `%${search}%` }
+          }
+        });
+
+        if (orderNumberCount === 0) {
+          return res.status(200).json({
+            success: true,
+            currentPage: page,
+            totalPages: 0,
+            totalRecords: 0,
+            data: [],
+          });
+        }
+      }
+    }
+
+    const totalCount = await SalesOrder.count({
+      where: finalWhere,
+      distinct: true,
+      col: 'SalesOrderId'
+    });
+
+    const salesOrders = await SalesOrder.findAll({
+      where: finalWhere,
       include: [
         {
           model: Users,
@@ -324,12 +385,13 @@ exports.getSalesOrdersByCustomer = async (req, res) => {
         {
           model: SalesOrderItem,
           as: "items",
-          separate: true,
+          required: false,
           include: [
             {
               model: Product,
               as: "Product",
               attributes: ["ProductId", "Name"],
+              required: false,
             },
           ],
         },
@@ -337,16 +399,14 @@ exports.getSalesOrdersByCustomer = async (req, res) => {
       order: [[sortBy, sortOrder]],
       limit,
       offset,
-      distinct: true, // ensures correct pagination with includes
-      subQuery: false,
     });
 
     res.status(200).json({
       success: true,
       currentPage: page,
-      totalPages: Math.ceil(count / limit),
-      totalRecords: count,
-      data: rows,
+      totalPages: Math.ceil(totalCount / limit),
+      totalRecords: totalCount,
+      data: salesOrders,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
