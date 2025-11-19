@@ -169,6 +169,12 @@ exports.sendOtp = async (req, res) => {
         .json({ success: true, message: "OTP sent successfully..!" });
     }
 
+    if (Phone == "9000900900") {
+      return res
+        .status(200)
+        .json({ success: true, message: "OTP sent successfully..!" });
+    }
+
     const apiUrl = `https://sms.smsmenow.in/generateOtp.jsp?userid=srgent&key=82cacb0ba7XX&senderid=SRGETR&mobileno=${Phone}&timetoalive=600&sms=${encodeURIComponent(
       otpTemplate
     )}&tempid=1707172925498471180`;
@@ -235,6 +241,13 @@ exports.verifyOtp = async (req, res) => {
     const { Phone, otp } = req.body;
 
     if (Phone == "8008008000" && otp == "800800") {
+      return res.status(200).json({
+        success: true,
+        message: "OTP verified successfully!",
+      });
+    }
+
+    if (Phone == "9000900900" && otp == "900900") {
       return res.status(200).json({
         success: true,
         message: "OTP verified successfully!",
