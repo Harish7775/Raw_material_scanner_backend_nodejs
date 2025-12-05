@@ -281,6 +281,11 @@ exports.getMasonSoDetailById = async (req, res) => {
           attributes: ["FirstName", "LastName"],
         },
         {
+          model: Users,
+          attributes: ["FirstName", "LastName"],
+          as: "creator",
+        },
+        {
           model: MasonSoDetail,
           attributes: ["ProductId", "Quantity", "RewardPoints"],
           as: "details",
