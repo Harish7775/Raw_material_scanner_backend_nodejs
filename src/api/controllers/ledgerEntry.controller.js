@@ -2,6 +2,7 @@ const db = require("../../models");
 const LedgerEntry = db.LedgerEntry;
 const Users = db.Users;
 const Product = db.Product;
+const SalesOrder = db.SalesOrder;
 const { Op } = require("sequelize");
 
 exports.createLedgerEntry = async (req, res) => {
@@ -67,6 +68,11 @@ exports.getAllLedgerEntries = async (req, res) => {
         as: "ProductDetail",
         attributes: ["Name"],
         // where: {},
+      },
+      {
+        model: SalesOrder,
+        as: "SODetail",
+        attributes: ["OrderNumber"],
       },
     ];
 

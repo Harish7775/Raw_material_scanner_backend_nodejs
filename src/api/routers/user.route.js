@@ -11,6 +11,7 @@ const router = express.Router();
 router.post('/addUser', validateRole(["Admin", "Retailer"]), validate(createUserSchema, "body"), userController.createUser);
 router.post('/adminLogin',validate(loginSchema, "body"), userController.adminLogin);
 router.post('/sendOtp', userController.sendOtp);
+router.post('/restoreAccount', userController.restoreAccount);
 router.post('/verifyOtp', userController.verifyOtp);
 router.post('/forgetPassword', userController.forgetPassword);
 router.post('/changePassword', userController.changePassword);
@@ -22,7 +23,10 @@ router.delete('/deleteUser/:id', validateRole(["Admin", "Retailer"]), validate(i
 router.get('/getRetailerDetailById/:id', validateRole(["Admin", "Retailer"]), validate(idSchema, 'params'), userController.getRetailerDetailById);
 router.get('/getDashboardStats', validateRole(["Admin", "Retailer"]), userController.getDashboardStats);
 router.get('/getRetailerStats', validateRole(["Admin", "Retailer"]), userController.getRetailerStats);
+router.get('/getRetailerStatsSecond', validateRole(["Admin", "Retailer"]), userController.getRetailerStatsSecond);
 router.get('/getMessonStats', validateRole(["Admin", "Mason"]), userController.getMessonStats);
+router.get('/getMessons', validateRole(["Admin", "Retailer"]), userController.getMessons);
+router.get('/getUserExists', validateRole(["Admin"]), userController.getUserExists);
 
 
 module.exports = router;

@@ -9,6 +9,8 @@ const couponRoute = require("./coupon.route");
 const ledgerRoute = require('./ledgerEntry.route');
 const masonSoRoute = require('./masonSo.route');
 const couponMasterRoute = require('./couponMaster.route');
+const purchaseOrderRoute = require('./purchaseOrder.route');
+const salesOrderRoute = require('./salesOrder.route');
 
 const allRouters = express.Router();
 
@@ -21,5 +23,7 @@ allRouters.use("/coupon", couponRoute);
 allRouters.use("/ledger", ledgerRoute);
 allRouters.use("/masonso", masonSoRoute);
 allRouters.use("/couponMaster", couponMasterRoute);
+allRouters.use("/purchaseOrder", purchaseOrderRoute);
+allRouters.use("/salesOrder", salesOrderRoute);
 
 module.exports = allRouters;
